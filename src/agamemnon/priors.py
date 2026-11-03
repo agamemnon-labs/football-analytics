@@ -26,6 +26,7 @@ FAR_OOB = 3.0                  # m; unambiguously off the pitch
 TEAM_DIST_SCALE = 2.0          # m of distance advantage per unit of team evidence
 TEAM_DIST_CLIP = 3.0
 CLOSE_RADIUS = 1.5             # m; within playing distance
+NEAR_RADIUS = 5.0              # m; players able to contest the ball within about a second
 TOUCH_MEMORY_S = 2.0           # s; decay of "who touched it last"
 SPREAD_SCALE = 3.0             # m of team-spread difference per unit
 SETPIECE_PRE_S = 2.0           # s before a Smart Tagging set piece starts that may still be dead
@@ -33,7 +34,7 @@ POST_GOAL_S = 60.0             # s after a goal during which a kick-off restart 
 
 # -- emission model coefficients (E, fitted by scripts/tune.py) ----------------------------------
 # Logistic models over features.team_design / features.dead_design; see decoder.py.
-TEAM_COEF = (0.1152, 0.041, 0.3059, 0.9613, 0.5459, 0.9801, 0.1021, -3.1858, 2.234)
+TEAM_COEF = (0.1152, 0.041, 0.3059, 0.9613, 0.5459, 0.9801, 0.1021, -3.1858, 0.0, 0.0, 0.0, 2.234)
 DEAD_COEF = (8.6778, -0.2149, 0.3634, 1.8751, 1.1234, 1.0611, 1.9755, -2.2193, -3.4979, 6.7944,
              -1.0086, -0.8435, -3.5865, -1.3592, 0.1562, 0.0806, 3.2228)
 
@@ -45,3 +46,8 @@ SWITCH_COST = 5.25  # H <-> A
 END_COST = 21.75  # alive -> D
 START_COST = 3.93  # D -> alive
 SNAP_WINDOW_S = 0.83  # s; move a hand-over to the taker's first touch within this
+
+# -- network emissions (E, scripts/train_tcn.py and scripts/tune.py) -----------------------------
+EMISSION = "logistic"          # "logistic" or "network"
+NN_TEMPER = 0.3
+NN_DEAD_BIAS = 0.0

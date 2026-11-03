@@ -1,10 +1,9 @@
-# Everything the evaluation needs. Deliberately two lines.
-#
-# The scorer is dependency-light on purpose: no sklearn, no torch, nothing that pins a Python
-# version. It runs under 3.8 and 3.11 alike and produces identical output, so "it scored
-# differently on my machine" is not a conversation anyone has to have.
-#
-# Optional tooling -- the ATD loader and anything that opens the video -- lives in
-# requirements-starter.txt.
-numpy
-pandas
+# Runtime and benchmark dependencies, pinned. The scorer in evaluation/ needs only numpy and pandas.
+numpy==2.5.4
+pandas==2.3.3
+python-dateutil==4.0.0
+pytz==2025.2
+tzdata==2026.6
+scipy==1.18.1
+lxml==5.4.0
+pytest==9.2.0
