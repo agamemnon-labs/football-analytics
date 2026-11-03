@@ -115,7 +115,19 @@ def load_data(keys):
     return data
 
 
-def train(train_keys, device, log_every=500):
+def _save_checkpoint(path, step, net, opt, sched, rng):
+    tmp = path + ".tmp"
+    torch.save({"step": step, "net": net.state_dict(), "opt": opt.state_dict(),
+                "sched": sched.state_dict(), "rng": rng.bit_generator.state,
+                "torch_rng": torch.get_rng_state(),
+                "cuda_rng": torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None},
+               tmp)
+    os.replace(tmp, path)  # never leave a half-written checkpoint after a power cut
+
+
+def train(train_keys, device, log_every=500, checkpoint=None):
+    """Train one network. With `checkpoint`, progress is saved every log_every steps and a run
+    that was interrupted (pause, power cut, shutdown) resumes from its last saved step."""
     torch.manual_seed(SEED)
     rng = np.random.default_rng(SEED)
     data = load_data(train_keys)
@@ -157,8 +169,20 @@ def train(train_keys, device, log_every=500):
     label_swap = torch.tensor([1, 0, 2], device=device)
     sched = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=LR, total_steps=STEPS)
     loss_fn = nn.CrossEntropyLoss(ignore_index=-1)
+    first = 0
+    if checkpoint and os.path.isfile(checkpoint):
+        state = torch.load(checkpoint, map_location="cpu", weights_only=False)
+        net.load_state_dict(state["net"])
+        opt.load_state_dict(state["opt"])
+        sched.load_state_dict(state["sched"])
+        rng.bit_generator.state = state["rng"]
+        torch.set_rng_state(state["torch_rng"])
+        if state["cuda_rng"] is not None and torch.cuda.is_available():
+            torch.cuda.set_rng_state_all(state["cuda_rng"])
+        first = state["step"]
+        print("  resumed at step {}".format(first), flush=True)
     t0 = time.time()
-    for step in range(STEPS):
+    for step in range(first, STEPS):
         ds = rng.integers(len(datasets), size=BATCH)
         piece = np.array([by_ds[datasets[d]][rng.integers(len(by_ds[datasets[d]]))] for d in ds])
         starts = offsets[piece] + rng.integers(0, lengths[piece] - CROP + 1)
@@ -180,6 +204,8 @@ def train(train_keys, device, log_every=500):
         loss.backward()
         opt.step()
         sched.step()
+        if checkpoint and (step + 1) % log_every == 0:
+            _save_checkpoint(checkpoint, step + 1, net, opt, sched, rng)
         if (step + 1) % log_every == 0:
             print("  step {} loss {:.4f} ({:.0f}s)".format(step + 1, loss.item(), time.time() - t0),
                   flush=True)
@@ -229,7 +255,9 @@ def main():
     games = bench.all_games()
     keys = lambda gs: [(d, m, lv) for d, m in gs for lv in bench.LEVELS]
     if args.final:
-        model = train(keys(games), device)
+        os.makedirs(CACHE_DIR, exist_ok=True)
+        ckpt = os.path.join(CACHE_DIR, "final_{}.ckpt".format(os.path.basename(args.out)))
+        model = train(keys(games), device, checkpoint=ckpt)
         os.makedirs(os.path.dirname(args.out), exist_ok=True)
         with open(args.out, "w") as handle:
             json.dump(model, handle, separators=(",", ":"))
@@ -240,8 +268,14 @@ def main():
     for f, held in enumerate(folds_of(games, args.folds)):
         if args.only_fold is not None and f != args.only_fold:
             continue
+        weights = os.path.join(OOF_DIR, "fold{}.json".format(f))
+        outputs = [os.path.join(OOF_DIR, "{}-{}@{}.npz".format(*k)) for k in keys(held)]
+        if os.path.isfile(weights) and all(os.path.isfile(o) for o in outputs):
+            print("fold {} already done, skipped".format(f), flush=True)
+            continue
         print("fold {} holds out {}".format(f, ["{}-{}".format(*g) for g in held]), flush=True)
-        model = train(keys([g for g in games if g not in held]), device)
+        model = train(keys([g for g in games if g not in held]), device,
+                      checkpoint=os.path.join(OOF_DIR, "fold{}.ckpt".format(f)))
         with open(os.path.join(OOF_DIR, "fold{}.json".format(f)), "w") as handle:
             json.dump(model, handle, separators=(",", ":"))
         net = tcn.load(os.path.join(OOF_DIR, "fold{}.json".format(f)))
