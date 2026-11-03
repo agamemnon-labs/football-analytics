@@ -24,13 +24,13 @@ TARGET_FPS = 25.0
 
 def match_ids(root=None):
     root = root or os.path.join(EXTERNAL_DIR, "skillcorner")
-    with open(os.path.join(root, "matches.json")) as handle:
+    with open(os.path.join(root, "matches.json"), encoding="utf-8") as handle:
         return sorted(str(m["id"]) for m in json.load(handle))
 
 
 def _read_tracking(path, slot_of, n_slots):
     frames, periods, groups, balls, players = [], [], [], [], []
-    with open(path) as handle:
+    with open(path, encoding="utf-8") as handle:
         for line in handle:
             row = json.loads(line)
             frames.append(row["frame"])
@@ -94,7 +94,7 @@ def _resample(values, t_src, t_dst):
 def convert(match_id, root=None):
     root = root or os.path.join(EXTERNAL_DIR, "skillcorner")
     folder = os.path.join(root, match_id)
-    with open(os.path.join(folder, "{}_match.json".format(match_id))) as handle:
+    with open(os.path.join(folder, "{}_match.json".format(match_id)), encoding="utf-8") as handle:
         info = json.load(handle)
     home_id = info["home_team"]["id"]
     length, width = float(info["pitch_length"]), float(info["pitch_width"])

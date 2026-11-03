@@ -79,7 +79,7 @@ def read_raw(raw_path, n_slots=EXPECTED_SLOTS, expected_frames=EXPECTED_FRAMES):
     group "x,y,s". Speeds are dropped; velocities are recomputed from positions so the competition
     match and the external games go through identical arithmetic.
     """
-    with open(raw_path) as handle:
+    with open(raw_path, encoding="ascii", errors="replace") as handle:
         text = handle.read()
     n_cols = 1 + 3 * n_slots + 3
     try:
