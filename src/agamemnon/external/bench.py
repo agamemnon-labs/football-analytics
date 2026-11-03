@@ -97,24 +97,28 @@ def synthetic_tags(match, seed_name):
                         team = None
                     elif rng.random() < 0.08:
                         team = None
-                    elif rng.random() < 0.05:
+                    elif rng.random() < 0.07:
                         team = A if k == H else H
-                    start = a - int(rng.uniform(0.5, 3.0) * fps)
-                    tags.append(Tag(SET_PIECES, start, a + int(rng.uniform(1.0, 4.0) * fps),
+                    start = a - int(rng.uniform(0.5, 4.0) * fps)
+                    tags.append(Tag(SET_PIECES, start, a + int(rng.uniform(0.5, 4.0) * fps),
                                     team, kind))
-            if b - a >= 4 * fps and rng.random() < 0.6:
-                lo = a + int(rng.uniform(0, 2) * fps)
-                hi = b - int(rng.uniform(0, 2) * fps)
+            # Phases are not possessions: they start and stop off the hand-over, and one in five
+            # runs on into the next possession (DATA.md: a phase "can cover two").
+            if b - a >= 3 * fps and rng.random() < 0.55:
+                lo = a + int(rng.uniform(-2, 3) * fps)
+                hi = b + int(rng.uniform(-3, 2) * fps)
+                if rng.random() < 0.2:
+                    hi = b + int(rng.uniform(1, 6) * fps)
                 if hi > lo:
                     if rng.random() < 0.6:
                         code, team = ATTACK[rng.integers(len(ATTACK))], k
                     else:
                         code, team = DEFEND[rng.integers(len(DEFEND))], (A if k == H else H)
-                    if rng.random() < 0.08:
+                    if rng.random() < 0.1:
                         team = A if team == H else H
-                    tags.append(Tag(code, lo + jitter(), hi + jitter(), team, None))
-        # False positives: about one every five minutes.
-        for _ in range(rng.poisson((p_stop - p_start) / (fps * 300))):
+                    tags.append(Tag(code, lo, hi, team, None))
+        # False positives: about one every three minutes.
+        for _ in range(rng.poisson((p_stop - p_start) / (fps * 180))):
             s = int(rng.integers(p_start, p_stop))
             code = ATTACK[rng.integers(len(ATTACK))]
             tags.append(Tag(code, s, s + int(rng.uniform(3, 10) * fps),
@@ -200,10 +204,20 @@ class Cell:
             Xd[:, deadball.DEAD_COLUMNS.index(name)] = 0
         return Xt, Xd
 
-    def decode(self, prm, tags=True):
+    def decode(self, prm, tags=True, logp=None):
         Xt, Xd = self.designs(tags)
         return decoder.decode_design(Xt, Xd, self.touch_home, self.touch_away, self.periods,
-                                     self.kickoffs, self.fps, prm)
+                                     self.kickoffs, self.fps, prm, logp)
+
+    def oof_logp(self, tags=True):
+        """Out-of-fold network log-probabilities written by scripts/train_tcn.py, if present."""
+        path = os.path.join(CACHE_DIR, "tcn_oof", "{}-{}@{}.npz".format(
+            self.dataset, self.mid, self.level))
+        if not os.path.isfile(path):
+            return None
+        with np.load(path) as data:
+            return data["logp" if tags else "logp_notags"]
 
     def score(self, prm, tags=True):
-        return score(self.gt, self.decode(prm, tags))
+        logp = self.oof_logp(tags) if getattr(prm, "EMISSION", "logistic") == "network" else None
+        return score(self.gt, self.decode(prm, tags, logp))

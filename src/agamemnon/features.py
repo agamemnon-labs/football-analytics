@@ -122,6 +122,10 @@ def compute(match, prm):
                           np.nanmin(np.where(np.isnan(dist[:, home]), np.inf, dist[:, home]), axis=1))
         d_away = np.where(np.all(np.isnan(dist[:, away]), axis=1), np.inf,
                           np.nanmin(np.where(np.isnan(dist[:, away]), np.inf, dist[:, away]), axis=1))
+    with np.errstate(invalid="ignore"):
+        near = np.nan_to_num(dist, nan=np.inf) < prm.NEAR_RADIUS
+    count_home = np.where(have, near[:, home].sum(axis=1), 0).astype(np.float32)
+    count_away = np.where(have, near[:, away].sum(axis=1), 0).astype(np.float32)
     d_home = np.where(have, d_home, np.nan).astype(np.float32)
     d_away = np.where(have, d_away, np.nan).astype(np.float32)
 
@@ -225,6 +229,7 @@ def compute(match, prm):
         "ball_speed": ball_speed.astype(np.float32),
         "ball_still": ball_still,
         "d_home": d_home, "d_away": d_away,
+        "near_home": count_home, "near_away": count_away,
         "med_speed": med_speed.astype(np.float32),
         "med_speed_1s": med_speed_1s, "med_speed_3s": med_speed_3s,
         "q75_speed_3s": q75_speed_3s,

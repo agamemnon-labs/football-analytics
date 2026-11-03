@@ -12,7 +12,7 @@ from . import deadball
 from .schema import A, D, H
 
 TEAM_COLUMNS = ("bias", "dist", "close", "touch", "next_touch", "spread", "ball_field",
-                "centroid_field", "tag")
+                "centroid_field", "log_d_home", "log_d_away", "near", "tag")
 
 def _decayed_last(events_home, events_away, fps, memory_s):
     """+1/-1 for the side that touched last, fading with time since that touch."""
@@ -39,8 +39,14 @@ def team_design(F, match, prm, tags=None):
     spread = np.nan_to_num(np.clip((F["spread_home"] - F["spread_away"]) / prm.SPREAD_SCALE,
                                    -3, 3))
     tag_team = tags[0] if tags is not None else np.zeros(match.n_frames, np.float32)
+    # Raw distances in log form: on their own they say how contested the ball is, which the
+    # difference above does not.
+    log_dh = np.where(have, np.log1p(np.minimum(dh, 30.0)), np.log1p(30.0))
+    log_da = np.where(have, np.log1p(np.minimum(da, 30.0)), np.log1p(30.0))
+    near = (F["near_home"] - F["near_away"]) / 3.0
     return np.column_stack([np.ones(match.n_frames), dist, close, touch, next_touch, spread,
-                            F["ball_field"], F["centroid_field"], tag_team]).astype(np.float32)
+                            F["ball_field"], F["centroid_field"], log_dh, log_da, near,
+                            tag_team]).astype(np.float32)
 
 
 def logit(X, coef):
@@ -148,22 +154,44 @@ def snap_handovers(labels, touch_home, touch_away, window, segments):
     return out
 
 
-def decode_design(Xt, Xd, touch_home, touch_away, periods, kickoffs, fps, prm):
-    """Decode from precomputed design matrices; the benchmark caches these per game."""
+def logistic_emissions(Xt, Xd, prm):
+    """Emission scores from the two logistic models, tempered."""
     team = logit(Xt, prm.TEAM_COEF)
     dead = logit(Xd, prm.DEAD_COEF)
     prior = np.log(prm.DEAD_PRIOR / (1 - prm.DEAD_PRIOR))
     t = prm.TEAM_TEMPER * team
     d = prm.DEAD_TEMPER * (dead - prior)
-    log_e = np.column_stack([t / 2, -t / 2, d]).astype(np.float32)
+    return np.column_stack([t / 2, -t / 2, d])
+
+
+def network_emissions(logp, prm):
+    """Emission scores from the temporal network's per-frame log-probabilities."""
+    log_e = prm.NN_TEMPER * np.asarray(logp, dtype=np.float64)
+    log_e[:, D] += prm.NN_DEAD_BIAS
+    return log_e
+
+
+def decode_emissions(log_e, touch_home, touch_away, periods, kickoffs, fps, prm):
     costs = [[0.0, prm.SWITCH_COST, prm.END_COST],
              [prm.SWITCH_COST, 0.0, prm.END_COST],
              [prm.START_COST, prm.START_COST, 0.0]]
-    forced = np.zeros(len(Xt), dtype=bool)
+    forced = np.zeros(len(log_e), dtype=bool)
     for (p0, _), k in zip(periods, kickoffs or [p[0] for p in periods]):
         forced[p0:k] = True
-    labels = viterbi(log_e, costs, periods, forced)
+    labels = viterbi(np.round(log_e, 5), costs, periods, forced)
     return snap_handovers(labels, touch_home, touch_away, int(prm.SNAP_WINDOW_S * fps), periods)
+
+
+def decode_design(Xt, Xd, touch_home, touch_away, periods, kickoffs, fps, prm, logp=None):
+    """Decode from design matrices (logistic emissions) or network log-probabilities."""
+    if getattr(prm, "EMISSION", "logistic") == "network":
+        if logp is None:
+            from . import tcn
+            logp = tcn.log_probs(tcn.load(), tcn.inputs(Xt, Xd), periods)
+        log_e = network_emissions(logp, prm)
+    else:
+        log_e = logistic_emissions(Xt, Xd, prm)
+    return decode_emissions(log_e, touch_home, touch_away, periods, kickoffs, fps, prm)
 
 
 def decode(F, match, prm, tags=None):

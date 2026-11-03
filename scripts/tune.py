@@ -43,21 +43,30 @@ SEARCH = {
     "DEAD_PRIOR": (0.2, 0.6, False),
     "SNAP_WINDOW_S": (0.0, 2.0, False),
 }
+SEARCH_NETWORK = {
+    "NN_TEMPER": (0.05, 1.5, True),
+    "NN_DEAD_BIAS": (-2.0, 2.0, False),
+    "SWITCH_COST": (2.0, 40.0, True),
+    "END_COST": (2.0, 40.0, True),
+    "START_COST": (2.0, 40.0, True),
+    "SNAP_WINDOW_S": (0.0, 2.0, False),
+}
 SUBSAMPLE = 7
 L2 = 1.0
-RESULTS = os.path.join(CACHE_DIR, "tune_results.json")
+RESULTS = os.path.join(CACHE_DIR, "tune_results_{}.json")
 
 
 def base_params():
     return {k: getattr(priors, k) for k in dir(priors) if k.isupper()}
 
 
-def sample_configs(n, seed=0):
+def sample_configs(n, seed=0, space=None):
+    space = space or SEARCH
     rng = np.random.default_rng(seed)
-    configs = [{k: getattr(priors, k) for k in SEARCH}]
+    configs = [{k: getattr(priors, k) for k in space}]
     for _ in range(n - 1):
         cfg = {}
-        for name, (lo, hi, log) in SEARCH.items():
+        for name, (lo, hi, log) in space.items():
             u = rng.random()
             cfg[name] = float(np.exp(np.log(lo) + u * (np.log(hi) - np.log(lo))) if log
                               else lo + u * (hi - lo))
@@ -104,7 +113,8 @@ def _eval_worker(args):
         for cell in cells:
             prm = SimpleNamespace(**base)
             prm.__dict__.update(cfg)
-            prm.TEAM_COEF, prm.DEAD_COEF = coefs[cell.game]
+            if coefs is not None:
+                prm.TEAM_COEF, prm.DEAD_COEF = coefs[cell.game]
             s = cell.score(prm, tags)
             out.append((ci, cell.game, cell.dataset, cell.level, s["spell_f1"], s["macro_f1"],
                         s["n_pred"], s["n_gt"]))
@@ -160,6 +170,8 @@ def main():
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--levels", nargs="+", default=list(bench.LEVELS))
     parser.add_argument("--no-tags", action="store_true")
+    parser.add_argument("--emission", choices=("logistic", "network"), default="logistic",
+                        help="network: score out-of-fold log-probabilities from train_tcn.py")
     parser.add_argument("--final", action="store_true",
                         help="fit the emission models on every game and print them")
     args = parser.parse_args()
@@ -177,7 +189,8 @@ def main():
     # Fold-specific emission weights: fit without the held-out game.
     coefs = {}
     all_cells = None
-    for d, m in games:
+    network = args.emission == "network"
+    for d, m in ([] if network else games):
         game = "{}-{}".format(d, m)
         train = [k for k in keys if (k[0], k[1]) != (d, m)]
         if all_cells is None:
@@ -186,13 +199,19 @@ def main():
         print("fitted {} in {:.0f}s".format(game, time.time() - t0), flush=True)
     del all_cells
 
-    configs = sample_configs(args.configs, args.seed)
+    if network:
+        coefs = None
+        configs = sample_configs(args.configs, args.seed, SEARCH_NETWORK)
+        for cfg in configs:
+            cfg["EMISSION"] = "network"
+    else:
+        configs = sample_configs(args.configs, args.seed)
     rows = evaluate(keys, coefs, configs, args.workers, tags)
     table = summarise(rows, len(configs))
     ranked = sorted(table, key=lambda t: -t["objective"])
     nested = nested_estimate(table, sorted({"{}-{}".format(d, m) for d, m in games}))
     os.makedirs(CACHE_DIR, exist_ok=True)
-    with open(RESULTS, "w") as handle:
+    with open(RESULTS.format(args.emission), "w") as handle:
         json.dump({"configs": configs, "table": table, "nested": nested, "coefs": coefs,
                    "rows": rows, "levels": args.levels, "tags": tags}, handle)
 
