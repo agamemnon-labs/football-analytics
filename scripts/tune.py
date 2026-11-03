@@ -44,12 +44,12 @@ SEARCH = {
     "SNAP_WINDOW_S": (0.0, 2.0, False),
 }
 SEARCH_NETWORK = {
-    "NN_TEMPER": (0.05, 1.5, True),
+    "NN_TEMPER": (0.1, 3.0, True),
     "NN_DEAD_BIAS": (-2.0, 2.0, False),
-    "SWITCH_COST": (2.0, 40.0, True),
-    "END_COST": (2.0, 40.0, True),
-    "START_COST": (2.0, 40.0, True),
-    "SNAP_WINDOW_S": (0.0, 2.0, False),
+    "SWITCH_COST": (8.0, 200.0, True),
+    "END_COST": (5.0, 150.0, True),
+    "START_COST": (5.0, 150.0, True),
+    "SNAP_WINDOW_S": (0.0, 1.5, False),
 }
 SUBSAMPLE = 7
 L2 = 1.0
@@ -174,7 +174,9 @@ def main():
                         help="network: score out-of-fold log-probabilities from train_tcn.py")
     parser.add_argument("--final", action="store_true",
                         help="fit the emission models on every game and print them")
+    parser.add_argument("--oof", default="tcn_oof", help="out-of-fold folder for --emission network")
     args = parser.parse_args()
+    os.environ["AGAMEMNON_OOF"] = args.oof
     tags = not args.no_tags
 
     games = bench.all_games()
@@ -211,7 +213,7 @@ def main():
     ranked = sorted(table, key=lambda t: -t["objective"])
     nested = nested_estimate(table, sorted({"{}-{}".format(d, m) for d, m in games}))
     os.makedirs(CACHE_DIR, exist_ok=True)
-    with open(RESULTS.format(args.emission), "w") as handle:
+    with open(RESULTS.format(args.emission if args.emission == "logistic" else args.oof), "w") as handle:
         json.dump({"configs": configs, "table": table, "nested": nested, "coefs": coefs,
                    "rows": rows, "levels": args.levels, "tags": tags}, handle)
 

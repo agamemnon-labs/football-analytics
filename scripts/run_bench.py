@@ -91,12 +91,20 @@ def main():
     parser.add_argument("--workers", type=int, default=8)
     parser.add_argument("--locked", action="store_true",
                         help="score with the emission weights in priors.py instead of refitting")
+    parser.add_argument("--emission", choices=("logistic", "network"), default=priors.EMISSION,
+                        help="network: out-of-fold predictions of scripts/train_tcn.py")
+    parser.add_argument("--oof", default="tcn_oof")
     args = parser.parse_args()
+    os.environ["AGAMEMNON_OOF"] = args.oof
     games = bench.all_games()
     keys = [(d, m, lv) for d, m in games for lv in bench.LEVELS]
+    overrides = {"EMISSION": args.emission}
     for tags in (True, False):
-        coefs = None if args.locked else lomo_coefs(games, keys, tags)
-        rows = run(keys, coefs, tags, args.workers)
+        if args.emission == "network" or args.locked:
+            coefs = None
+        else:
+            coefs = lomo_coefs(games, keys, tags)
+        rows = run(keys, coefs, tags, args.workers, overrides)
         report(rows, "with imitation Smart Tagging" if tags else "without tags")
 
 

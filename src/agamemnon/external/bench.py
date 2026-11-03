@@ -211,7 +211,7 @@ class Cell:
 
     def oof_logp(self, tags=True):
         """Out-of-fold network log-probabilities written by scripts/train_tcn.py, if present."""
-        path = os.path.join(CACHE_DIR, "tcn_oof", "{}-{}@{}.npz".format(
+        path = os.path.join(CACHE_DIR, os.environ.get("AGAMEMNON_OOF", "tcn_oof"), "{}-{}@{}.npz".format(
             self.dataset, self.mid, self.level))
         if not os.path.isfile(path):
             return None
