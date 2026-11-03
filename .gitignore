@@ -65,6 +65,6 @@ env/
 
 # -- team additions ------------------------------------------------------------------------------
 # Downloaded external datasets and derived bench caches. Licences allow use, not redistribution here.
-external/
+/external/
 .pytest_cache/
 *.egg-info/
