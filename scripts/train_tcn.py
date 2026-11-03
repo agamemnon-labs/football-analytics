@@ -3,6 +3,10 @@
     python scripts/train_tcn.py --folds 5          # out-of-fold log-probabilities for tuning
     python scripts/train_tcn.py --final            # train on every game, write models/tcn.json
 
+Long runs can be paused and resumed: `python scripts/jobctl.py pause <job>` asks the run to stop at
+the next safe point (a few seconds), and running the same command again continues from there.
+Checkpoints are also written every 500 steps, so a power cut loses well under a minute of work.
+
 Only external games are used. Folds are grouped by game and stratified by dataset, so a game's
 out-of-fold predictions come from a network that never saw any degraded copy of it. Training is
 seeded but uses fast, non-deterministic GPU kernels (cuDNN autotuning, bfloat16 autocast), so a
@@ -13,7 +17,7 @@ Needs `pip install -r requirements-train.txt` (torch); inference (src/agamemnon/
 """
 
 import argparse
-import json
+import io
 import os
 import sys
 import time
@@ -28,6 +32,8 @@ sys.path.insert(0, os.path.join(ROOT, "src"))
 
 from agamemnon import deadball, decoder, tcn  # noqa: E402
 from agamemnon.external import CACHE_DIR, bench  # noqa: E402
+from agamemnon.external.jobs import (PAUSED_EXIT, Job, Paused, atomic_write_bytes,  # noqa: E402
+                                     atomic_write_json)
 
 DILATIONS = (1, 2, 4, 8, 16, 32, 64, 128, 256)
 WIDTH = 96
@@ -41,6 +47,8 @@ DROPOUT = 0.25          # inside residual blocks; training only, inference is un
 WEIGHT_DECAY = 1e-3
 SWAP = True             # augment by exchanging the roles of the two teams
 SEED = 0
+CHECKPOINT_EVERY = 500  # steps; bounds the loss after a crash or power cut
+PAUSE_POLL = 25         # steps between checks of the pause marker, about two seconds
 OOF_DIR = os.path.join(CACHE_DIR, "tcn_oof")
 SWAP_ANTISYMMETRIC = ("dist", "close", "touch", "next_touch", "spread", "ball_field",
                       "centroid_field", "near", "tag")
@@ -115,21 +123,52 @@ def load_data(keys):
     return data
 
 
-def _save_checkpoint(path, step, net, opt, sched, rng):
-    tmp = path + ".tmp"
-    torch.save({"step": step, "net": net.state_dict(), "opt": opt.state_dict(),
+def save_checkpoint(path, step, net, opt, sched, rng):
+    """Everything needed to continue exactly where training stopped, written atomically.
+
+    The previous checkpoint is kept as .bak until the new one is on disk, so even a cut between
+    the two renames leaves one complete file to resume from.
+    """
+    buffer = io.BytesIO()
+    torch.save({"step": step, "steps": STEPS, "net": net.state_dict(), "opt": opt.state_dict(),
                 "sched": sched.state_dict(), "rng": rng.bit_generator.state,
                 "torch_rng": torch.get_rng_state(),
                 "cuda_rng": torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None},
-               tmp)
-    os.replace(tmp, path)  # never leave a half-written checkpoint after a power cut
+               buffer)
+    if os.path.isfile(path):
+        os.replace(path, path + ".bak")
+    atomic_write_bytes(path, buffer.getvalue())
 
 
-def train(train_keys, device, log_every=500, checkpoint=None):
-    """Train one network. With `checkpoint`, progress is saved every log_every steps and a run
-    that was interrupted (pause, power cut, shutdown) resumes from its last saved step."""
+def load_checkpoint(path):
+    """The newest checkpoint that loads, trying path then path.bak; None if neither exists."""
+    for candidate in (path, path + ".bak"):
+        if not os.path.isfile(candidate):
+            continue
+        try:
+            state = torch.load(candidate, map_location="cpu", weights_only=False)
+        except Exception as error:  # a torn file from an older version of this script
+            print("  checkpoint {} unreadable ({}), trying the backup".format(
+                os.path.basename(candidate), type(error).__name__), flush=True)
+            continue
+        if state.get("steps", STEPS) != STEPS:
+            raise SystemExit("checkpoint {} was made for {} steps, this run has {}; "
+                             "refusing to mix them".format(candidate, state.get("steps"), STEPS))
+        return state
+    return None
+
+
+def train(train_keys, device, log_every=500, checkpoint=None, job=None):
+    """Train one network.
+
+    With `checkpoint`, progress is saved every CHECKPOINT_EVERY steps and on a pause request, and
+    an interrupted run (pause, power cut, shutdown) resumes from its last saved step. Raises
+    Paused after saving when `job` reports a pause request.
+    """
     torch.manual_seed(SEED)
     rng = np.random.default_rng(SEED)
+    if job is not None:
+        job.update(state="loading data", step=0, steps=STEPS)
     data = load_data(train_keys)
     stacked = np.concatenate([x for _, x, _ in data])
     mean = stacked.mean(axis=0)
@@ -170,8 +209,8 @@ def train(train_keys, device, log_every=500, checkpoint=None):
     sched = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=LR, total_steps=STEPS)
     loss_fn = nn.CrossEntropyLoss(ignore_index=-1)
     first = 0
-    if checkpoint and os.path.isfile(checkpoint):
-        state = torch.load(checkpoint, map_location="cpu", weights_only=False)
+    state = load_checkpoint(checkpoint) if checkpoint else None
+    if state is not None:
         net.load_state_dict(state["net"])
         opt.load_state_dict(state["opt"])
         sched.load_state_dict(state["sched"])
@@ -181,7 +220,12 @@ def train(train_keys, device, log_every=500, checkpoint=None):
             torch.cuda.set_rng_state_all(state["cuda_rng"])
         first = state["step"]
         print("  resumed at step {}".format(first), flush=True)
+    if job is not None and job.pause_requested():
+        # Asked to pause while the data was loading: nothing new to save.
+        job.update(state="paused", step=first)
+        raise Paused()
     t0 = time.time()
+    t_last, step_last = t0, first
     for step in range(first, STEPS):
         ds = rng.integers(len(datasets), size=BATCH)
         piece = np.array([by_ds[datasets[d]][rng.integers(len(by_ds[datasets[d]]))] for d in ds])
@@ -204,11 +248,26 @@ def train(train_keys, device, log_every=500, checkpoint=None):
         loss.backward()
         opt.step()
         sched.step()
-        if checkpoint and (step + 1) % log_every == 0:
-            _save_checkpoint(checkpoint, step + 1, net, opt, sched, rng)
-        if (step + 1) % log_every == 0:
-            print("  step {} loss {:.4f} ({:.0f}s)".format(step + 1, loss.item(), time.time() - t0),
+        done = step + 1
+        if checkpoint and done % CHECKPOINT_EVERY == 0:
+            save_checkpoint(checkpoint, done, net, opt, sched, rng)
+            if job is not None:
+                job.update(checkpoint_step=done)
+        if done % log_every == 0:
+            print("  step {} loss {:.4f} ({:.0f}s)".format(done, loss.item(), time.time() - t0),
                   flush=True)
+        if job is not None and done % PAUSE_POLL == 0:
+            now = time.time()
+            speed = (now - t_last) / max(done - step_last, 1)
+            t_last, step_last = now, done
+            job.update(state="training", step=done, sec_per_step=round(speed, 4),
+                       loss=round(float(loss.item()), 4))
+            if job.pause_requested() and done < STEPS:
+                if checkpoint:
+                    save_checkpoint(checkpoint, done, net, opt, sched, rng)
+                job.update(state="paused", step=done, checkpoint_step=done)
+                print("  paused at step {}, checkpoint saved".format(done), flush=True)
+                raise Paused()
     return export(net, mean, std)
 
 
@@ -254,39 +313,85 @@ def main():
 
     games = bench.all_games()
     keys = lambda gs: [(d, m, lv) for d, m in gs for lv in bench.LEVELS]
-    if args.final:
-        os.makedirs(CACHE_DIR, exist_ok=True)
-        ckpt = os.path.join(CACHE_DIR, "final_{}.ckpt".format(os.path.basename(args.out)))
-        model = train(keys(games), device, checkpoint=ckpt)
-        os.makedirs(os.path.dirname(args.out), exist_ok=True)
-        with open(args.out, "w") as handle:
-            json.dump(model, handle, separators=(",", ":"))
-        print("wrote", args.out)
-        return
+    name = os.path.splitext(os.path.basename(args.out))[0]
+    job = Job("final-" + name if args.final else args.name)
+    previous = job.read()
+    if previous and previous.get("state") not in ("paused", "done", "failed") \
+            and alive(previous.get("pid")):
+        raise SystemExit("job {} is already running as pid {}; two runs would write the same "
+                         "checkpoint".format(job.name, previous["pid"]))
+    job.start(mode="final" if args.final else "cv", folds=1 if args.final else args.folds)
+    try:
+        if args.final:
+            run_final(args, games, keys, device, job)
+        else:
+            run_folds(args, games, keys, device, job)
+    except Paused:
+        print("PAUSED: run the same command again to continue", flush=True)
+        sys.exit(PAUSED_EXIT)
+    except BaseException as error:
+        job.update(state="failed", error="{}: {}".format(type(error).__name__, error)[:300])
+        raise
+    job.update(state="done")
+    print("DONE", flush=True)
 
+
+def alive(pid):
+    """Is a process with this pid running? Windows has no signal 0, so ask tasklist."""
+    if not pid:
+        return False
+    if os.name == "nt":
+        import subprocess
+        out = subprocess.run(["tasklist", "/FI", "PID eq {}".format(pid), "/NH", "/FO", "CSV"],
+                             capture_output=True, text=True).stdout
+        return '","{}",'.format(pid) in out
+    try:
+        os.kill(pid, 0)
+        return True
+    except OSError:
+        return False
+
+
+def run_final(args, games, keys, device, job):
+    job.update(fold=0)
+    model = train(keys(games), device, checkpoint=os.path.join(job.dir, "final.ckpt"), job=job)
+    os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
+    atomic_write_json(args.out, model)
+    print("wrote", args.out)
+
+
+def run_folds(args, games, keys, device, job):
     os.makedirs(OOF_DIR, exist_ok=True)
     for f, held in enumerate(folds_of(games, args.folds)):
         if args.only_fold is not None and f != args.only_fold:
             continue
         weights = os.path.join(OOF_DIR, "fold{}.json".format(f))
-        outputs = [os.path.join(OOF_DIR, "{}-{}@{}.npz".format(*k)) for k in keys(held)]
-        if os.path.isfile(weights) and all(os.path.isfile(o) for o in outputs):
+        outputs = {k: os.path.join(OOF_DIR, "{}-{}@{}.npz".format(*k)) for k in keys(held)}
+        if os.path.isfile(weights) and all(os.path.isfile(o) for o in outputs.values()):
             print("fold {} already done, skipped".format(f), flush=True)
             continue
+        job.update(fold=f)
         print("fold {} holds out {}".format(f, ["{}-{}".format(*g) for g in held]), flush=True)
-        model = train(keys([g for g in games if g not in held]), device,
-                      checkpoint=os.path.join(OOF_DIR, "fold{}.ckpt".format(f)))
-        with open(os.path.join(OOF_DIR, "fold{}.json".format(f)), "w") as handle:
-            json.dump(model, handle, separators=(",", ":"))
-        net = tcn.load(os.path.join(OOF_DIR, "fold{}.json".format(f)))
-        for key in keys(held):
+        if not os.path.isfile(weights):
+            model = train(keys([g for g in games if g not in held]), device,
+                          checkpoint=os.path.join(OOF_DIR, "fold{}.ckpt".format(f)), job=job)
+            atomic_write_json(weights, model)
+        net = tcn.load(weights)
+        todo = [k for k, o in outputs.items() if not os.path.isfile(o)]
+        for i, key in enumerate(todo):
+            if job.pause_requested():
+                job.update(state="paused", inference_left=len(todo) - i)
+                raise Paused()
+            job.update(state="inference", inference_left=len(todo) - i)
             cell = bench.Cell(*key)
             logp = tcn.log_probs(net, drop_channels(tcn.inputs(cell.Xt, cell.Xd)), cell.periods)
             notag = drop_channels(tcn.inputs(*cell.designs(tags=False)))
             logp_nt = tcn.log_probs(net, notag, cell.periods)
-            np.savez_compressed(os.path.join(OOF_DIR, "{}-{}@{}.npz".format(*key)),
-                                logp=logp.astype(np.float32), logp_notags=logp_nt.astype(np.float32))
-
+            buffer = io.BytesIO()
+            np.savez_compressed(buffer, logp=logp.astype(np.float32),
+                                logp_notags=logp_nt.astype(np.float32))
+            atomic_write_bytes(outputs[key], buffer.getvalue())
+        job.update(inference_left=0)
 
 if __name__ == "__main__":
     main()
