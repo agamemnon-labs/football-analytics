@@ -60,3 +60,41 @@ its first alive frame is the kick-off.
 
 Then the control rule. Positions are linearly resampled from 10 fps to 25 fps and labels take the
 latest source frame at or before each output frame.
+
+## Dead ball
+
+The ball is dead from the moment it leaves the pitch or play is stopped until the restart is
+taken. The pipeline (`src/agamemnon/deadball.py`) looks for:
+
+- **Out of bounds.** The ball last seen more than 0.5 m beyond a touchline or goal line (the margin
+  absorbs tracking noise; the ball is out only when wholly over the line, and 0.5 m covers the ball
+  radius plus jitter). A ball that disappears outside the lines stays out until seen again.
+- **Collective stoppage.** Players walking rather than running (median and upper-quartile speed
+  over 1 s and 3 s windows) together with a ball that is held still or not seen.
+- **Kick-off set-ups.** Nearly every player in his own half and the ball near the centre spot.
+- **Smart Tagging.** A SET PIECES interval (and the 2 s before it) marks a restart nearby; a GOALS
+  interval is followed by up to 60 s of stoppage before the kick-off. Tags are automatic and can be
+  missed or wrong, so they are weighted evidence, not rules.
+
+None of these is a hard rule except the published period boundaries: frames before each half's
+kick-off are `D` (the second half is graded from frame 110808 and kicks off at 113742, FAQ.md).
+The weights of each signal are fitted on the external games, and the decoder's alive-to-dead and
+dead-to-alive penalties set the minimum length of a stoppage; a short dip in player speed in the
+middle of play does not become a `D` run unless the other evidence agrees.
+
+## Restarts and who has the ball first
+
+After a stoppage the restarting team has possession. With a valid Smart Tagging `Team` the set
+piece pushes the first frames after the restart towards that team; with `N/A` (every throw-in,
+and kick-offs after goals) there is no prior and the first controlled touch decides. A goal tag's
+`Team` is the scoring side, so the kick-off belongs to the other team; the decoder gets this from
+the touch evidence at the kick-off rather than from a rule, because the tag time can be off by
+several seconds.
+
+## Loose balls and hand-overs
+
+Contested balls stay with the team that had possession: the decoder needs sustained evidence
+(nearest players, touches, team shape) for the other team before it switches, and a switch costs a
+fixed penalty fitted on the external games. Once a switch is decided, its frame is moved to the
+first touch by the team taking over within 0.8 s, which is the best available estimate of when
+control changed.
