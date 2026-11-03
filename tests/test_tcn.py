@@ -15,7 +15,7 @@ import train_tcn  # noqa: E402
 
 def test_numpy_inference_matches_torch(tmp_path):
     torch.manual_seed(1)
-    net = train_tcn.Net(tcn.N_INPUTS).double()
+    net = train_tcn.Net(tcn.N_INPUTS).double().eval()
     rng = np.random.default_rng(0)
     x = rng.normal(size=(700, tcn.N_INPUTS))
     mean, std = rng.normal(size=tcn.N_INPUTS), rng.uniform(0.5, 2, tcn.N_INPUTS)
