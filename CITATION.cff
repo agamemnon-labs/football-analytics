@@ -1,28 +1,37 @@
 cff-version: 1.2.0
-title: "More than a Hack 2027: Frame-level Ball Possession"
-message: "If you use this benchmark, its data or its metrics, please cite it."
-type: dataset
-abstract: >-
-  A frame-level ball-possession benchmark built on one full professional football match
-  (FC Barcelona vs Athletic Club, LaLiga EA Sports 2024-25, matchday 2). Participants label
-  each of 199,319 video frames as home in possession, away in possession, or dead ball.
-  Entries are ranked by spellF1, a possession-interval metric that scores each possession
-  once rather than each frame, and macroF1 is reported alongside it. The repository provides
-  the scorer, a public 5-minute ground truth and reference baselines; the full-match ground
-  truth is held private.
+message: "If you use this software, please cite it as below."
+title: "Agamemnon: frame-level ball possession from automatic tracking"
+type: software
 authors:
-  - name: "Metrica Sports"
-  - name: "Barça Innovation Hub"
-repository-code: "https://github.com/metrica-sports/more-than-a-hack-2027"
+  - given-names: Naufal
+    family-names: Fahrozi
+  - given-names: Raymond
+    family-names: Thymotimmanuel
+  - given-names: Tua Delima
+    family-names: Sitompul
+repository-code: "https://github.com/agamemnon-labs/football-analytics"
 license: MIT
-license-url: "https://github.com/metrica-sports/more-than-a-hack-2027/blob/main/LICENSE"
-date-released: "2026-10-20"
-version: "1.0.0"
-keywords:
-  - football
-  - soccer
-  - ball possession
-  - tracking data
-  - sports analytics
-  - temporal action detection
-  - benchmark
+date-released: "2026-11-04"
+references:
+  - type: software
+    title: "More than a Hack 2027: Phase 1 - Ball Possession (starter kit and scorer)"
+    authors:
+      - name: Metrica Sports
+      - name: FC Barcelona Innovation Hub
+    url: "https://github.com/metrica-sports/more-than-a-hack-2027"
+  - type: article
+    title: "An integrated dataset of spatiotemporal and event data in elite soccer"
+    authors:
+      - family-names: Bassek
+        given-names: Manuel
+      - family-names: Rein
+        given-names: Robert
+      - family-names: Weber
+        given-names: Hendrik
+      - family-names: Memmert
+        given-names: Daniel
+    journal: "Scientific Data"
+    volume: 12
+    start: 195
+    year: 2025
+    doi: "10.1038/s41597-025-04505-y"

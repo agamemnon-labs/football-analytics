@@ -27,13 +27,13 @@ not affiliated with or endorsed by the organisers, FC Barcelona or Metrica Sport
 
 ```mermaid
 flowchart LR
-    ATD[ATD tracking<br/>ball + 46 slots] --> F[features.py<br/>proximity, touches,<br/>team shape, stoppage]
-    ST[Smart Tagging] --> T[deadball.py<br/>set-piece / goal windows,<br/>phase team prior]
-    F --> N[temporal CNN<br/>P&#40;H&#41;, P&#40;A&#41;, P&#40;D&#41; per frame]
+    ATD["ATD tracking<br/>ball + 46 slots"] --> F["features.py<br/>proximity, touches,<br/>team shape, stoppage"]
+    ST["Smart Tagging"] --> T["deadball.py<br/>set-piece and goal windows,<br/>phase team prior"]
+    F --> N["temporal CNN<br/>P(H), P(A), P(D) per frame"]
     T --> N
-    N --> V[3-state Viterbi<br/>switch penalties]
-    V --> S[snap hand-overs<br/>to taker's touch]
-    S --> CSV[frame,label CSV]
+    N --> V["3-state Viterbi<br/>switch penalties"]
+    V --> S["snap hand-overs<br/>to the taker's touch"]
+    S --> CSV["frame,label CSV"]
 ```
 
 1. **Features.** Distances from the ball to the nearest player of each side, ball touches
