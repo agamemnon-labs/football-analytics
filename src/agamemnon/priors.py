@@ -42,12 +42,12 @@ DEAD_COEF = (8.6778, -0.2149, 0.3634, 1.8751, 1.1234, 1.0611, 1.9755, -2.2193, -
 TEAM_TEMPER = 0.29  # per-frame log-odds are correlated; scale before summing
 DEAD_TEMPER = 0.30
 DEAD_PRIOR = 0.345  # share of dead frames assumed by the dead model's intercept
-SWITCH_COST = 5.25  # H <-> A
-END_COST = 21.75  # alive -> D
-START_COST = 3.93  # D -> alive
-SNAP_WINDOW_S = 0.83  # s; move a hand-over to the taker's first touch within this
+SWITCH_COST = 41.05  # H <-> A
+END_COST = 37.75  # alive -> D
+START_COST = 58.35  # D -> alive
+SNAP_WINDOW_S = 0.22  # s; move a hand-over to the taker's first touch within this
 
 # -- network emissions (E, scripts/train_tcn.py and scripts/tune.py) -----------------------------
-EMISSION = "logistic"          # "logistic" or "network"
-NN_TEMPER = 0.3
-NN_DEAD_BIAS = 0.0
+EMISSION = "network"           # "logistic" or "network"
+NN_TEMPER = 1.918
+NN_DEAD_BIAS = -0.736

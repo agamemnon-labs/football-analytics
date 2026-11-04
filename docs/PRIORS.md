@@ -35,13 +35,13 @@ This file is generated from `src/agamemnon/priors.py` by `scripts/priors_table.p
 | `TEAM_TEMPER` | `0.29` | E | logistic emissions: per-frame log-odds are correlated | scripts/tune.py |
 | `DEAD_TEMPER` | `0.3` | E | same, dead-ball model | scripts/tune.py |
 | `DEAD_PRIOR` | `0.345` | E | intercept correction of the dead-ball model | scripts/tune.py |
-| `SWITCH_COST` | `5.25` | E | Viterbi penalty for H <-> A | scripts/tune.py |
-| `END_COST` | `21.75` | E | Viterbi penalty for alive -> D | scripts/tune.py |
-| `START_COST` | `3.93` | E | Viterbi penalty for D -> alive | scripts/tune.py |
-| `SNAP_WINDOW_S` | `0.83` | E | search window for moving a hand-over to the taker's touch | scripts/tune.py |
-| `EMISSION` | `logistic` | E | which emission model the decoder uses | scripts/tune.py --emission network |
-| `NN_TEMPER` | `0.3` | E | network emissions: scale of per-frame log-probabilities | scripts/tune.py |
-| `NN_DEAD_BIAS` | `0` | E | network emissions: offset of the dead-ball log-probability | scripts/tune.py |
+| `SWITCH_COST` | `41.05` | E | Viterbi penalty for H <-> A | scripts/tune.py |
+| `END_COST` | `37.75` | E | Viterbi penalty for alive -> D | scripts/tune.py |
+| `START_COST` | `58.35` | E | Viterbi penalty for D -> alive | scripts/tune.py |
+| `SNAP_WINDOW_S` | `0.22` | E | search window for moving a hand-over to the taker's touch | scripts/tune.py |
+| `EMISSION` | `network` | E | which emission model the decoder uses | scripts/tune.py --emission network |
+| `NN_TEMPER` | `1.918` | E | network emissions: scale of per-frame log-probabilities | scripts/tune.py |
+| `NN_DEAD_BIAS` | `-0.736` | E | network emissions: offset of the dead-ball log-probability | scripts/tune.py |
 
 ## Amendments
 
