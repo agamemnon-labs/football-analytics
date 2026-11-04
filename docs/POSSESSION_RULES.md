@@ -78,9 +78,11 @@ taken. The pipeline (`src/agamemnon/deadball.py`) looks for:
 
 None of these is a hard rule except the published period boundaries: frames before each half's
 kick-off are `D` (the second half is graded from frame 110808 and kicks off at 113742, FAQ.md).
-The weights of each signal are fitted on the external games, and the decoder's alive-to-dead and
-dead-to-alive penalties set the minimum length of a stoppage; a short dip in player speed in the
-middle of play does not become a `D` run unless the other evidence agrees.
+A temporal convolutional network trained on the external games (`src/agamemnon/tcn.py`) turns
+these signals into per-frame probabilities of `H`, `A` and `D`, looking about 20 s either side of
+each frame. The decoder's alive-to-dead and dead-to-alive penalties then set the minimum length of
+a stoppage, so a short dip in player speed in the middle of play does not become a `D` run unless
+the other evidence agrees.
 
 ## Restarts and who has the ball first
 
@@ -95,6 +97,7 @@ several seconds.
 
 Contested balls stay with the team that had possession: the decoder needs sustained evidence
 (nearest players, touches, team shape) for the other team before it switches, and a switch costs a
-fixed penalty fitted on the external games. Once a switch is decided, its frame is moved to the
-first touch by the team taking over within 0.8 s, which is the best available estimate of when
-control changed.
+fixed penalty tuned on the external games. Once a switch is decided, its frame is moved to the
+first touch by the team taking over within 0.22 s, which is the best available estimate of when
+control changed. The tuned window is short because the network already places most hand-overs on
+the touch; on the external benchmark the snap changes spellF1 by less than 0.001.
