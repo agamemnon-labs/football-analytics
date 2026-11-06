@@ -177,6 +177,10 @@ Retraining is optional (`requirements-train.txt`, PyTorch 2.6 with CUDA):
 GPU training uses fast non-deterministic kernels, so retrained weights differ in the last digits;
 the submission is defined by the committed weights.
 
+This document is `docs/TECHNICAL_REPORT.md`, rendered with
+`pip install -r requirements-docs.txt && python scripts/build_report.py` (python-markdown and a
+headless Chromium browser).
+
 # 8. Development protocol
 
 - Development code touched `data/` only through the loader, and the developers worked from
