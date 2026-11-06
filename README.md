@@ -31,6 +31,11 @@ project, not affiliated with or endorsed by the organisers, FC Barcelona or Metr
   <img src="docs/assets/broadcast.gif" alt="A Bundesliga match from a TV-style camera, players as pins, with a possession graphic showing the model's call and the truth" width="800">
 </p>
 
+<p align="center">
+  <a href="https://agamemnon-labs.github.io/football-analytics/"><b>Play with the live demo</b></a>: scrub the match,
+  switch cameras, and take the ball away from the model to see how it copes.
+</p>
+
 <sub>Thirty seconds of a Bundesliga match from our external benchmark, re-drawn from tracking data
 through a TV-style camera that follows the ball. The box top left is the model's call, live, next to
 the truth. We deleted about a third of the ball positions on purpose, because that's what automatic
