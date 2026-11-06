@@ -9,11 +9,11 @@ date: "November 2026"
 
 We have to label each of the 199,319 frames of FC Barcelona vs Athletic Club as `H`, `A`, `D` or
 `X`. The ranking metric, `spellF1`, matches whole possessions one-to-one by temporal overlap, and
-that shaped most of our decisions. A frame-level mistake costs little on its own; what costs a lot
-is a possession that flickers to the other team for half a second, because one correct possession
-becomes three wrong ones, and a boundary that is a second late. So we never decide frame by frame.
-We collect evidence for every frame and then choose the most likely sequence of possessions for a
-whole half at once.
+that shaped most of our decisions. A single wrong frame barely matters. What hurts is a possession
+that flickers to the other team for half a second (one correct possession turns into three wrong
+ones) and a boundary that lands a second late. So we never make the call frame by frame. We collect
+evidence for every frame and then ask what the most believable sequence of possessions is for the
+whole half.
 
 The pipeline has four steps.
 
@@ -38,9 +38,10 @@ We never write `X` on a graded frame. The scorer fills an `X` with the previous 
 computing `spellF1`, so abstaining can only repeat a decision the decoder already makes, and
 `macroF1` counts it as a miss.
 
-We considered simpler designs and dropped them. A nearest-player rule with smoothing, like the
-published baseline, has no way to say "the ball is in the air between two team-mates" or "play has
-stopped". A frame classifier without a state model flickers. A hand-written rule set needs
+We tried to talk ourselves into simpler designs and couldn't. A nearest-player rule with smoothing,
+like the published baseline, has no way to say "the ball is in the air between two team-mates" or
+"play has stopped". A frame classifier without a state model flickers like a VAR check that keeps
+changing its mind. A hand-written rule set needs
 thresholds that we would have had to tune on this match, which the rules forbid. A learned
 emission model plus an explicit state model lets every constant be either physical or fitted on
 other games. Our first version used two logistic models as emissions; moving to the network took
@@ -154,12 +155,13 @@ check that the pipeline works on this match, not as a prediction of the full-mat
 
 # 6. Limitations and what we would do next
 
-The clearest weakness is that we find too few possessions. On the public slice we predict 10 where
+Our clearest weakness: we find too few possessions. On the public slice we predict 10 where
 there are 17, and on the full match 163 per 90 minutes, against 210 to 240 on the external games.
 Short possessions get merged into their neighbours. A lower switch cost would split more of them,
 but on the external matches it lowers `spellF1` (0.703 to 0.696 when halved), because a short
-possession placed wrongly costs more than one that is missed. We did not adjust anything after
-seeing the public slice, because that would be tuning on this match.
+possession placed wrongly costs more than one that is missed. We did not touch anything after
+seeing the public slice. That would be tuning on this match, and the whole point of the exercise is
+a pipeline that works on a match it has never seen.
 
 SkillCorner is weaker than IDSSE (0.657 against 0.748), partly because its dead-ball labels come
 from phase boundaries rather than a tracking flag. The tags are worth about 0.09, and without them
