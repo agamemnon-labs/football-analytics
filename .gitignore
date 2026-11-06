@@ -68,3 +68,6 @@ env/
 /external/
 .pytest_cache/
 *.egg-info/
+
+# Built from docs/TECHNICAL_REPORT.md by scripts/build_report.py and build_docx.py
+/Agamemnon.docx

@@ -10,6 +10,7 @@ browser (Edge or Chrome), so no LaTeX installation is needed.
 import argparse
 import html
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -18,7 +19,8 @@ import tempfile
 import markdown
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SOURCE = os.path.join(ROOT, "docs", "TECHNICAL_REPORT.md")
+DOCS = os.path.join(ROOT, "docs")
+SOURCE = os.path.join(DOCS, "TECHNICAL_REPORT.md")
 
 BROWSERS = [
     r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
@@ -45,7 +47,21 @@ th, td { border-bottom: 0.6px solid #bbb; padding: 2.5pt 5pt; text-align: left; 
 th { border-bottom: 1px solid #333; }
 code { font-family: Consolas, "DejaVu Sans Mono", monospace; font-size: 8.6pt; }
 pre { background: #f3f3f3; padding: 5pt 7pt; font-size: 8.4pt; page-break-inside: avoid; }
+figure { margin: 8pt 0 10pt 0; page-break-inside: avoid; }
+figure img { width: 100%; }
+figure.narrow img { width: 72%; display: block; margin: 0 auto; }
+figcaption { font-size: 8.4pt; color: #444; margin-top: 3pt; }
 """
+
+
+def figures(content):
+    """A paragraph holding only an image becomes a figure, with its alt text as the caption."""
+    def one(match):
+        src, alt = match.group(2), match.group(1)
+        cls = ' class="narrow"' if "demo" in src else ""
+        return '<figure{}><img src="{}" alt=""><figcaption>{}</figcaption></figure>'.format(
+            cls, src, alt)
+    return re.sub(r'<p><img alt="([^"]*)" src="([^"]+)" /></p>', one, content)
 
 
 def front_matter(text):
@@ -76,12 +92,13 @@ def main():
 
     with open(SOURCE, encoding="utf-8") as handle:
         meta, body = front_matter(handle.read())
-    content = markdown.markdown(body, extensions=["tables", "fenced_code"])
-    page = """<!doctype html><html><head><meta charset="utf-8"><title>{t}</title><style>{css}</style>
+    content = figures(markdown.markdown(body, extensions=["tables", "fenced_code"]))
+    base = "file:///" + DOCS.replace("\\", "/") + "/"
+    page = """<!doctype html><html><head><meta charset="utf-8"><base href="{base}"><title>{t}</title><style>{css}</style>
 </head><body><header><h1>{t}</h1><p class="sub">{s}</p><p class="meta">{a}<br>{d}</p></header>
 {c}</body></html>""".format(t=html.escape(meta.get("title", "")), s=html.escape(meta.get("subtitle", "")),
                           a=html.escape(meta.get("author", "")), d=html.escape(meta.get("date", "")),
-                          css=CSS, c=content)
+                          css=CSS, c=content, base=base)
 
     browser = find_browser(args.browser)
     out = os.path.abspath(args.out)
