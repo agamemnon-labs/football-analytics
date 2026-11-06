@@ -71,3 +71,6 @@ env/
 
 # Built from docs/TECHNICAL_REPORT.md by scripts/build_report.py and build_docx.py
 /Agamemnon.docx
+
+# Renders for sharing, not part of the repository
+/share/

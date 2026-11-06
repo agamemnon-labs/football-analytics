@@ -28,14 +28,15 @@ getting whole possessions right, not individual frames. (Quick disclaimer: this 
 project, not affiliated with or endorsed by the organisers, FC Barcelona or Metrica Sports.)
 
 <p align="center">
-  <img src="docs/assets/demo.gif" alt="Thirty seconds of a Bundesliga match: players as dots on a pitch, with the true possession and our labels as coloured bars underneath" width="720">
+  <img src="docs/assets/broadcast.gif" alt="A Bundesliga match from a TV-style camera, players as pins, with a possession graphic showing the model's call and the truth" width="800">
 </p>
 
-<sub>Thirty seconds of a Bundesliga match from our external benchmark, drawn from exactly what the
-model gets to see. We deleted about a third of the ball positions on purpose, because that's what
-automatic tracking feels like in real life. Top bar is the truth, bottom bar is us. Yes, we miss
-that short blue possession in the middle. More on that below. The Barcelona match itself never shows
-up here: its data isn't ours to publish.</sub>
+<sub>Thirty seconds of a Bundesliga match from our external benchmark, re-drawn from tracking data
+through a TV-style camera that follows the ball. The box top left is the model's call, live, next to
+the truth. We deleted about a third of the ball positions on purpose, because that's what automatic
+tracking feels like in real life; when you see "ball not tracked", the model is flying blind. Yes, we
+miss that short blue possession in the middle. More on that below. There's no real footage here: the
+Barcelona match can't be published, and the open datasets we use come without video.</sub>
 
 ## Why it's harder than it looks
 
@@ -68,6 +69,12 @@ flowchart LR
     V --> S["Move each change<br/>to the taker's first touch"]
     S --> CSV["frame,label"]
 ```
+
+Here's the same thirty seconds from above, the way the pipeline actually thinks about it:
+
+<p align="center">
+  <img src="docs/assets/demo.gif" alt="The same clip from above: players as dots on a pitch, with the true possession and our labels as coloured bars underneath" width="640">
+</p>
 
 ### 1. Gather clues
 
@@ -152,7 +159,7 @@ Want to rebuild the benchmark (about 4.5 GB of downloads) and the figures on thi
 
 ```bash
 python scripts/fetch_external.py && python scripts/build_cells.py && python scripts/run_bench.py
-python scripts/make_figures.py
+python scripts/make_figures.py && python scripts/make_broadcast.py
 ```
 
 Retraining the network needs PyTorch (`requirements-train.txt`) and ideally a CUDA GPU; ours trained
