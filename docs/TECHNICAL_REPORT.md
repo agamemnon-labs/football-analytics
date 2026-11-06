@@ -1,7 +1,7 @@
 ---
 title: "Agamemnon: frame-level ball possession from automatic tracking"
 subtitle: "More than a Hack 2027, Phase 1: technical document"
-author: "Team Agamemnon (Universitas Mulawarman): Naufal Fahrozi, Raymond Thymotimmanuel, Tua Delima Sitompul"
+author: "Team Agamemnon: Naufal Fahrozi, Raymond Thymotimmanuel, Tua Delima Sitompul"
 date: "November 2026"
 ---
 
@@ -62,12 +62,13 @@ team and medians.
 
 # 3. External data, training and tuning
 
-All fitting happens on 27 external matches (docs/EXTERNAL_DATA.md):
+All fitting happens on 27 external matches (docs/EXTERNAL_DATA.md). None of the labels were made
+by our team, and none come from the provided game.
 
-| dataset | matches | labels used | licence |
-|---|---|---|---|
-| IDSSE, DFL Bundesliga 2022/23 (Bassek et al., *Scientific Data* 12, 195, 2025) | 7 | per-frame ball status and possession | CC BY 4.0 |
-| SkillCorner Open Data, A-League 2024/25 | 20 | possession group per frame, phases of play | MIT |
+| dataset | amount | labels used | labels produced by | licence |
+|---|---|---|---|---|
+| IDSSE, DFL Bundesliga 2022/23 (Bassek et al., *Scientific Data* 12, 195, 2025) | 7 matches, 11.1 h, 1.0 M frames at 25 fps | per-frame ball status (alive/dead) and ball possession (home/away) | the DFL's official position-data feed, published with the dataset | CC BY 4.0 |
+| SkillCorner Open Data, A-League 2024/25 | 20 matches, 32.8 h, 3.0 M frames (10 fps resampled to 25) | possession group per frame, phases of play | SkillCorner, as published in its open-data repository | MIT |
 
 Their labels are mapped onto the competition definition: IDSSE possession switches on every
 touch, so spells shorter than 2 s are absorbed by the possession they interrupt (except straight
