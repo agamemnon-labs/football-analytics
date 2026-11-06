@@ -16,7 +16,7 @@ import numpy as np
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "src"))
 
-from agamemnon import priors  # noqa: E402
+from agamemnon import decoder, priors  # noqa: E402
 from agamemnon.external import bench  # noqa: E402
 from agamemnon.external.degrade import LEVELS, degrade  # noqa: E402
 
@@ -55,17 +55,26 @@ def main():
     levels = {}
     for name in bench.LEVELS:
         cell = bench.Cell(GAME[0], GAME[1], name)
-        pred = cell.decode(priors, True, cell.oof_logp(True))
+        logp = cell.oof_logp(True)
+        pred = cell.decode(priors, True, logp)
+        # The network's best guess frame by frame, before the decoder: what the page shows
+        # when the decoder is switched off.
+        raw = np.argmax(decoder.network_emissions(logp, priors), axis=1).astype(np.int8)
         full = bench.score(cell.gt, pred)
+        undecoded = bench.score(cell.gt, raw)
         seen = degrade(tagged, name)
         levels[name] = {
             "missing": LEVELS[name],
             "ball": dm(seen.ball[a:b:BALL_STEP]),
             "pred": runs(pred[a:b]),
+            "raw": runs(raw[a:b]),
             "spell_f1": round(float(full["spell_f1"]), 3),
             "macro_f1": round(float(full["macro_f1"]), 3),
+            "raw_spell_f1": round(float(undecoded["spell_f1"]), 3),
+            "raw_macro_f1": round(float(undecoded["macro_f1"]), 3),
         }
-        print(name, "spellF1 {spell_f1} macroF1 {macro_f1}".format(**levels[name]))
+        print(name, "spellF1 {spell_f1} macroF1 {macro_f1} undecoded {raw_spell_f1}".format(**levels[name]),
+              "runs decoded", len(levels[name]["pred"]) // 2, "raw", len(levels[name]["raw"]) // 2)
 
     gt = bench.ground_truth(match)
     data = {
