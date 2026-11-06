@@ -1,18 +1,20 @@
 """Three-state (H, A, D) decoding of per-frame evidence with Viterbi.
 
-Per-frame evidence comes from two small logistic models: one for "home rather than away" on live
-frames, one for "dead rather than alive". Their log-odds are tempered (consecutive frames are far
-from independent) and used as emission scores; switching state costs a fixed penalty, which is what
-stops a possession from flickering. All weights are fitted on external games only.
+Emission scores come either from the temporal network (tcn.py, the submitted setting) or from two
+small logistic models, one for "home rather than away" on live frames and one for "dead rather
+than alive"; priors.EMISSION picks which. Scores are tempered because consecutive frames are far
+from independent. Switching state costs a fixed penalty, which is what stops a possession from
+flickering. All weights are fitted on external games only.
 """
 
 import numpy as np
 
 from . import deadball
-from .schema import A, D, H
+from .schema import D, H
 
 TEAM_COLUMNS = ("bias", "dist", "close", "touch", "next_touch", "spread", "ball_field",
                 "centroid_field", "log_d_home", "log_d_away", "near", "tag")
+
 
 def _decayed_last(events_home, events_away, fps, memory_s):
     """+1/-1 for the side that touched last, fading with time since that touch."""

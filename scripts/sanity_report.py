@@ -17,7 +17,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "src"))
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
 
-from agamemnon import pipeline, priors  # noqa: E402
+from agamemnon import pipeline  # noqa: E402
 from agamemnon.external import bench  # noqa: E402
 from agamemnon.schema import A, D, GOALS, H, SET_PIECES, X  # noqa: E402
 import tune  # noqa: E402
