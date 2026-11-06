@@ -115,7 +115,6 @@ evaluation/ starter/ games.py   from the organisers' starter kit (MIT), unchange
 | Raymond Thymotimmanuel | football domain, possession rules | [@Rodexxx24](https://github.com/Rodexxx24) |
 | Tua Delima Sitompul | data science, benchmark and models | [@delima-sitompul](https://github.com/delima-sitompul) |
 
-Universitas Mulawarman.
 
 ## Licence and attribution
 
