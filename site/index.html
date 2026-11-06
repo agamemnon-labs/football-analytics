@@ -1,0 +1,528 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agamemnon · Who has the ball?</title>
+<meta name="description" content="Watch our model call ball possession, frame by frame, on a Bundesliga match it has never seen.">
+<meta property="og:title" content="Agamemnon · Who has the ball?">
+<meta property="og:description" content="Frame-level ball possession from automatic tracking. Watch the model call it live.">
+<meta property="og:image" content="assets/social.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,400..800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0b0c0d;
+    --panel: #131518;
+    --panel-2: #1a1d21;
+    --line: #262a2f;
+    --ink: #f2efe6;
+    --ink-2: #b9b5aa;
+    --ink-3: #7f7c74;
+    --gold: #b08a4e;
+    --home: #3987e5;
+    --away: #d95926;
+    --dead: #5f5e5a;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink); }
+  body { font-family: "Archivo", system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 16px;
+         line-height: 1.55; -webkit-font-smoothing: antialiased; }
+  a { color: var(--ink); text-decoration-color: var(--gold); text-underline-offset: 3px; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 20px; }
+
+  header { display: flex; align-items: center; justify-content: space-between; padding: 22px 0; }
+  .brand { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+  .brand svg { width: 28px; height: 30px; }
+  .brand span { font-stretch: 125%; font-weight: 700; letter-spacing: 0.14em; font-size: 15px; }
+  nav { display: flex; gap: 18px; font-size: 14px; }
+  nav a { color: var(--ink-2); text-decoration: none; }
+  nav a:hover { color: var(--ink); }
+
+  .hero { padding: 36px 0 26px; }
+  .kicker { color: var(--gold); font-size: 13px; font-weight: 600; letter-spacing: 0.12em;
+            text-transform: uppercase; margin: 0 0 12px; }
+  h1 { font-stretch: 125%; font-weight: 800; font-size: clamp(40px, 7vw, 76px); line-height: 1.02;
+       margin: 0 0 18px; letter-spacing: -0.01em; }
+  .lede { color: var(--ink-2); font-size: clamp(17px, 2vw, 20px); max-width: 720px; margin: 0; }
+
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 30px 0 34px; }
+  .stat { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+          padding: 16px 18px; }
+  .stat b { display: block; font-stretch: 112%; font-size: 30px; font-weight: 700; line-height: 1.1; }
+  .stat span { color: var(--ink-2); font-size: 13.5px; }
+  .stat small { display: block; color: var(--ink-3); font-size: 12px; margin-top: 4px; }
+
+  .stage { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 14px; }
+  .viewport { position: relative; border-radius: 12px; overflow: hidden; background: #1f4728;
+              aspect-ratio: 16 / 9; }
+  .viewport canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; }
+  .bug { position: absolute; left: 14px; top: 14px; background: rgba(13, 15, 17, 0.88);
+         border-radius: 10px; padding: 9px 12px 10px; min-width: 190px; pointer-events: none;
+         backdrop-filter: blur(4px); }
+  .bug .lab { font-size: 10.5px; font-weight: 700; letter-spacing: 0.12em; color: #9aa3a8; }
+  .bug .row { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
+  .chip { font-stretch: 118%; font-weight: 800; font-size: 17px; letter-spacing: 0.06em; padding: 5px 12px;
+          border-radius: 7px; background: var(--dead); color: #fff; min-width: 84px; text-align: center;
+          transition: background 120ms linear; }
+  .truth { font-size: 13px; color: #d7dcdf; }
+  .truth i { font-style: normal; font-weight: 700; }
+  .share { position: absolute; right: 14px; top: 14px; background: rgba(13, 15, 17, 0.88);
+           border-radius: 10px; padding: 9px 12px; width: 220px; pointer-events: none; }
+  .share .bar { display: flex; height: 10px; border-radius: 3px; overflow: hidden; margin-top: 7px;
+                background: var(--dead); }
+  .share .bar div { height: 100%; transition: width 120ms linear; }
+  .share .nums { display: flex; justify-content: space-between; font-size: 12px; color: #d7dcdf; margin-top: 4px; }
+  .lost { position: absolute; left: 14px; bottom: 14px; font-size: 12px; color: #e8ece9;
+          background: rgba(13, 15, 17, 0.7); padding: 4px 9px; border-radius: 6px; opacity: 0;
+          transition: opacity 150ms; pointer-events: none; }
+  .lost.on { opacity: 1; }
+
+  .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 12px; }
+  .btn { appearance: none; border: 1px solid var(--line); background: var(--panel-2); color: var(--ink);
+         font: inherit; font-size: 13.5px; font-weight: 600; padding: 8px 13px; border-radius: 9px; cursor: pointer; }
+  .btn:hover { border-color: #3a4048; }
+  .btn.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .btn.play { min-width: 82px; }
+  .group { display: inline-flex; gap: 4px; padding: 3px; border: 1px solid var(--line); border-radius: 11px; }
+  .group .btn { border: 0; padding: 6px 10px; }
+  .group .btn:not(.on) { background: transparent; color: var(--ink-2); }
+  .spacer { flex: 1; }
+  .clock { font-variant-numeric: tabular-nums; color: var(--ink-2); font-size: 13.5px; }
+  .glabel { font-size: 12px; color: var(--ink-3); margin-right: 2px; }
+
+  .timeline { margin-top: 12px; position: relative; }
+  .timeline canvas { width: 100%; height: 86px; display: block; cursor: pointer; border-radius: 8px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 12.5px; color: var(--ink-2); margin-top: 10px; }
+  .legend i { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+  .readout { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 14px; }
+  .readout div { background: var(--panel-2); border-radius: 11px; padding: 11px 14px; }
+  .readout b { font-stretch: 112%; font-size: 21px; display: block; }
+  .readout span { font-size: 12.5px; color: var(--ink-2); }
+  .note { color: var(--ink-3); font-size: 13px; margin: 14px 2px 0; }
+
+  section { padding: 56px 0 0; }
+  h2 { font-stretch: 118%; font-weight: 800; font-size: clamp(26px, 3.4vw, 36px); margin: 0 0 14px; }
+  .prose { color: var(--ink-2); max-width: 760px; }
+  .prose p { margin: 0 0 14px; }
+  .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 22px; }
+  .step { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; }
+  .step .n { color: var(--gold); font-weight: 700; font-size: 13px; letter-spacing: 0.1em; }
+  .step h3 { font-stretch: 112%; margin: 6px 0 8px; font-size: 18px; }
+  .step p { margin: 0; color: var(--ink-2); font-size: 14.5px; }
+  .figs img { width: 100%; border-radius: 12px; border: 1px solid var(--line); margin-top: 14px; display: block; }
+
+  footer { margin-top: 64px; padding: 26px 0 40px; border-top: 1px solid var(--line); color: var(--ink-3); font-size: 13px; }
+  footer p { margin: 0 0 8px; max-width: 900px; }
+
+  @media (max-width: 860px) {
+    .stats, .steps { grid-template-columns: repeat(2, 1fr); }
+    .share { display: none; }
+  }
+  @media (max-width: 540px) {
+    .wrap { padding: 0 16px; }
+    .stats, .readout { grid-template-columns: 1fr 1fr; }
+    .steps { grid-template-columns: 1fr; }
+    nav a.hide-sm { display: none; }
+    .bug { transform: scale(0.82); transform-origin: top left; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a class="brand" href="https://github.com/agamemnon-labs/football-analytics">
+      <svg viewBox="0 0 512 572" aria-hidden="true">
+        <polygon fill="#f2efe6" points="37,535 117,535 248,185 248,37 225,37"/>
+        <polygon fill="#f2efe6" points="264,37 287,37 475,535 395,535 264,185"/>
+        <polygon fill="#b08a4e" points="205,341 307,341 330,402 182,402"/>
+      </svg>
+      <span>AGAMEMNON</span>
+    </a>
+    <nav>
+      <a href="#how">How it works</a>
+      <a class="hide-sm" href="https://github.com/agamemnon-labs/football-analytics/blob/main/docs/TECHNICAL_REPORT.md">Technical doc</a>
+      <a href="https://github.com/agamemnon-labs/football-analytics">GitHub</a>
+    </nav>
+  </header>
+
+  <div class="hero">
+    <p class="kicker">More than a Hack 2027 · Phase 1</p>
+    <h1>Who has<br>the ball?</h1>
+    <p class="lede">Our model watches automatic tracking data and calls possession 25 times a second:
+      home, away, or dead ball. Below it's doing exactly that, live in your browser, on a Bundesliga
+      match it has never seen. Drag the timeline, switch cameras, take the ball away from it.</p>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><b>0.681</b><span>spellF1 on 27 unseen matches</span><small>nested cross-validation</small></div>
+    <div class="stat"><b>0.519</b><span>on the public 5 minutes</span><small>best published baseline 0.424</small></div>
+    <div class="stat"><b>~40%</b><span>of frames with no ball</span><small>and it still has to decide</small></div>
+    <div class="stat"><b>12 s</b><span>for a whole match on a laptop CPU</span><small>same md5 on every machine</small></div>
+  </div>
+
+  <div class="stage" id="stage">
+    <div class="viewport" id="viewport">
+      <canvas id="pitch" aria-label="Animated pitch with players and ball"></canvas>
+      <div class="bug">
+        <div class="lab">POSSESSION CALL</div>
+        <div class="row"><div class="chip" id="chip">…</div><div class="truth" id="truth"></div></div>
+      </div>
+      <div class="share">
+        <div class="lab" style="font-size:10.5px;font-weight:700;letter-spacing:.12em;color:#9aa3a8">SHARE SO FAR</div>
+        <div class="bar"><div id="shareH" style="background:var(--home);width:50%"></div><div id="shareA" style="background:var(--away);width:50%"></div></div>
+        <div class="nums"><span id="shareHn">–</span><span id="shareAn">–</span></div>
+      </div>
+      <div class="lost" id="lost">ball not tracked right now</div>
+    </div>
+
+    <div class="controls">
+      <button class="btn play" id="play">Pause</button>
+      <div class="group" id="speed">
+        <button class="btn" data-v="0.5">0.5×</button><button class="btn on" data-v="1">1×</button><button class="btn" data-v="2">2×</button><button class="btn" data-v="4">4×</button>
+      </div>
+      <div class="group" id="cam">
+        <button class="btn on" data-v="tv">TV cam</button><button class="btn" data-v="top">Tactical</button>
+      </div>
+      <div class="spacer"></div>
+      <span class="glabel">ball removed</span>
+      <div class="group" id="level">
+        <button class="btn" data-v="low">20%</button><button class="btn on" data-v="mid">35%</button><button class="btn" data-v="high">50%</button><button class="btn" data-v="severe">60%</button>
+      </div>
+      <span class="clock" id="clock">0:00 / 10:00</span>
+    </div>
+
+    <div class="timeline"><canvas id="tl"></canvas></div>
+    <div class="legend">
+      <span><i style="background:var(--home)"></i>Home has it</span>
+      <span><i style="background:var(--away)"></i>Away has it</span>
+      <span><i style="background:var(--dead)"></i>Dead ball</span>
+      <span><i style="background:#c9c5bb"></i>Ball visible to the model</span>
+    </div>
+
+    <div class="readout">
+      <div><b id="agree">–</b><span>of frames agree with the truth so far</span></div>
+      <div><b id="poss">–</b><span>possessions so far, truth vs model</span></div>
+      <div><b id="full">–</b><span>spellF1 on this whole match at this level</span></div>
+    </div>
+  </div>
+  <p class="note">The first ten minutes of one external match (IDSSE / DFL, CC BY 4.0), scored by a version of
+    the network that never saw it. Players come from the clean tracking; the ball and the model's calls
+    come from the degraded version you pick, which is what the model actually had to work with. This match
+    is one of the easier ones in our benchmark: the average over all 27 matches is 0.703 with the same
+    settings and 0.681 in the stricter nested estimate.</p>
+
+  <section id="how">
+    <h2>How it works</h2>
+    <div class="prose">
+      <p>"Whoever's closest has it" works for about ten seconds. Then the ball goes missing, a long
+        pass hangs in the air near nobody, a defender pokes it without winning it, or play stops for a
+        throw-in with everyone still standing around. And the scoring metric punishes flicker hard: a
+        possession that jumps to the other team for half a second turns one right answer into three wrong ones.</p>
+      <p>So we never make the call frame by frame. We gather evidence for every frame, then pick the most
+        believable story for the whole half, paying a fee every time possession switches.</p>
+    </div>
+    <div class="steps">
+      <div class="step"><div class="n">01</div><h3>Gather clues</h3><p>Distances, who touched it last and who touches it next, team shape, players walking like the whistle just went, ball over the line, tactical tags.</p></div>
+      <div class="step"><div class="n">02</div><h3>Read the room</h3><p>A small 1-D CNN looks twenty seconds either way and turns the clues into P(home), P(away), P(dead) for every frame.</p></div>
+      <div class="step"><div class="n">03</div><h3>Pick the story</h3><p>A Viterbi decoder finds the best sequence for the half. The switching fee is what stops the flicker.</p></div>
+      <div class="step"><div class="n">04</div><h3>Tidy the edges</h3><p>Each change of possession moves to the first touch of the team taking over. That's when it really happened.</p></div>
+    </div>
+    <div class="figs">
+      <img src="assets/benchmark-dark.png" alt="spellF1 of three model versions, and how much spellF1 is lost by single changes" loading="lazy">
+    </div>
+  </section>
+
+  <section>
+    <h2>Trained on everybody but Barcelona</h2>
+    <div class="prose">
+      <p>The competition match is FC Barcelona vs Athletic Club, and the rules say no tuning on it, so we
+        didn't. The network learned from 7 Bundesliga matches (IDSSE) and 20 A-League matches (SkillCorner)
+        with their tracking deliberately wrecked to look like automatic tracking: the ball deleted in chunks,
+        positions jittered, player IDs swapped. We locked every parameter, pushed the commit, and only then
+        scored the public five minutes, once.</p>
+      <p>Honest weak spot: we merge short possessions. Splitting them more would look nicer on the public clip
+        and score worse on the 27 matches we can actually measure, so we left it. It's all in the
+        <a href="https://github.com/agamemnon-labs/football-analytics/blob/main/docs/TECHNICAL_REPORT.md">technical document</a>.</p>
+    </div>
+  </section>
+
+  <footer>
+    <p>Built by Naufal Fahrozi, Raymond Thymotimmanuel and Tua Delima Sitompul for Phase 1 of
+      <a href="https://github.com/metrica-sports/more-than-a-hack-2027">More than a Hack 2027</a>. An
+      independent team project, not affiliated with or endorsed by the organisers, FC Barcelona or Metrica Sports.</p>
+    <p>Match data in this demo: IDSSE, © DFL Deutsche Fußball Liga, CC BY 4.0 (Bassek et al., <i>Scientific Data</i>
+      12, 195, 2025). We removed ball positions and perturbed tracking to imitate automatic tracking. Code MIT.</p>
+  </footer>
+</div>
+
+<script>
+(() => {
+  "use strict";
+  const H = 0, A = 1, D = 2;
+  const COL = { [H]: "#3987e5", [A]: "#d95926", [D]: "#5f5e5a" };
+  const NAME = { [H]: "home", [A]: "away", [D]: "dead ball" };
+  const CHIP = { [H]: "HOME", [A]: "AWAY", [D]: "DEAD" };
+  const $ = (id) => document.getElementById(id);
+
+  const state = { t: 0, playing: true, speed: 1, cam: "tv", level: "mid", lookX: 52.5, lastBall: null };
+  let data, L, W, fps, dur, nP, truth, levels = {};
+
+  function expand(rle, n) {
+    const out = new Int8Array(n);
+    let k = 0;
+    for (let i = 0; i < rle.length; i += 2) { out.fill(rle[i], k, k + rle[i + 1]); k += rle[i + 1]; }
+    return out;
+  }
+
+  function playerAt(t) {
+    const fp = t * fps / data.player_step;
+    const i0 = Math.min(Math.floor(fp), data.frames_p - 1), i1 = Math.min(i0 + 1, data.frames_p - 1);
+    const w = fp - i0, out = [];
+    for (let s = 0; s < nP; s++) {
+      const a = (i0 * nP + s) * 2, b = (i1 * nP + s) * 2, P = data.players;
+      if (P[a] < 0 && P[a + 1] < 0) continue;
+      const ok = P[b] >= 0 || P[b + 1] >= 0;
+      const x = ok ? P[a] + (P[b] - P[a]) * w : P[a], y = ok ? P[a + 1] + (P[b + 1] - P[a + 1]) * w : P[a + 1];
+      out.push({ x: x / 10, y: y / 10, side: s < data.n_home ? H : A });
+    }
+    return out;
+  }
+
+  function ballAt(t) {
+    const B = levels[state.level].ball, n = B.length / 2;
+    const fb = t * fps / data.ball_step;
+    const i0 = Math.min(Math.floor(fb), n - 1), i1 = Math.min(i0 + 1, n - 1), w = fb - i0;
+    if (B[i0 * 2] < 0 || B[i1 * 2] < 0) return null;
+    return { x: (B[i0 * 2] + (B[i1 * 2] - B[i0 * 2]) * w) / 10, y: (B[i0 * 2 + 1] + (B[i1 * 2 + 1] - B[i0 * 2 + 1]) * w) / 10 };
+  }
+
+  // Camera: high on the near side, aimed short of the far touchline, panning with play.
+  const CAM = { back: 35, height: 22, lookY: 20, focal: 1000 };
+  function camBasis(lx) {
+    const e = [lx, -CAM.back, CAM.height], tg = [lx, CAM.lookY, 0];
+    let f = [tg[0] - e[0], tg[1] - e[1], tg[2] - e[2]];
+    const fn = Math.hypot(...f); f = f.map(v => v / fn);
+    let r = [f[1] * 1 - f[2] * 0, f[2] * 0 - f[0] * 1, 0];
+    const rn = Math.hypot(...r); r = r.map(v => v / rn);
+    const u = [r[1] * f[2] - r[2] * f[1], r[2] * f[0] - r[0] * f[2], r[0] * f[1] - r[1] * f[0]];
+    return { e, f, r, u };
+  }
+
+  const cv = $("pitch"), ctx = cv.getContext("2d");
+  const tl = $("tl"), tctx = tl.getContext("2d");
+  let VW = 960, VH = 540, scale = 1;
+
+  function resize() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const r = cv.getBoundingClientRect();
+    cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
+    VW = cv.width; VH = cv.height; scale = VW / 960;
+    const tr = tl.getBoundingClientRect();
+    tl.width = Math.round(tr.width * dpr); tl.height = Math.round(tr.height * dpr);
+    drawTimeline();
+  }
+
+  function makeProjector() {
+    if (state.cam === "tv") {
+      const B = camBasis(state.lookX);
+      return (x, y, z = 0) => {
+        const d = [x - B.e[0], y - B.e[1], z - B.e[2]];
+        const zc = d[0] * B.f[0] + d[1] * B.f[1] + d[2] * B.f[2];
+        const xc = d[0] * B.r[0] + d[1] * B.r[1] + d[2] * B.r[2];
+        const yc = d[0] * B.u[0] + d[1] * B.u[1] + d[2] * B.u[2];
+        const k = CAM.focal / zc * scale;
+        return [VW / 2 + xc * k, VH / 2 - yc * k, k];
+      };
+    }
+    const m = 0.045, k = Math.min(VW * (1 - 2 * m) / L, VH * (1 - 2 * m) / W);
+    const ox = (VW - L * k) / 2, oy = (VH - W * k) / 2;
+    return (x, y, z = 0) => [ox + x * k, VH - (oy + y * k) - z * k * 0.0, k];
+  }
+
+  function poly(P, pts, fill) {
+    ctx.beginPath();
+    pts.forEach(([x, y], i) => { const p = P(x, y); i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); });
+    ctx.closePath(); ctx.fillStyle = fill; ctx.fill();
+  }
+  function path(P, pts, z = 0) {
+    ctx.beginPath();
+    pts.forEach(([x, y, zz], i) => { const p = P(x, y, zz ?? z); i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); });
+    ctx.stroke();
+  }
+  const circle = (cx, cy, r, n = 64) => Array.from({ length: n + 1 }, (_, i) => [cx + r * Math.cos(i / n * 2 * Math.PI), cy + r * Math.sin(i / n * 2 * Math.PI)]);
+
+  function drawPitch(P) {
+    ctx.fillStyle = "#1f4728"; ctx.fillRect(0, 0, VW, VH);
+    poly(P, [[-14, -10], [L + 14, -10], [L + 14, W + 16], [-14, W + 16]], "#24502d");
+    const n = 18;
+    for (let i = 0; i < n; i++) poly(P, [[L * i / n, 0], [L * (i + 1) / n, 0], [L * (i + 1) / n, W], [L * i / n, W]], i % 2 ? "#347442" : "#2f6b3a");
+    if (state.cam === "tv") {
+      for (let i = 0, x = -6; x < L + 6; x += 6, i++) {
+        const c = ["#14181c", COL[H], "#14181c", COL[A]][i % 4];
+        const q = [P(x, W + 4, 0), P(x + 5.8, W + 4, 0), P(x + 5.8, W + 4, 1), P(x, W + 4, 1)];
+        ctx.beginPath(); q.forEach((p, j) => j ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.closePath();
+        ctx.fillStyle = c; ctx.fill();
+      }
+    }
+    ctx.strokeStyle = "rgba(233,239,233,0.9)"; ctx.lineWidth = 1.6 * scale; ctx.lineJoin = "round";
+    path(P, [[0, 0], [L, 0], [L, W], [0, W], [0, 0]]);
+    path(P, [[L / 2, 0], [L / 2, W]]);
+    path(P, circle(L / 2, W / 2, 9.15));
+    for (const [x0, s] of [[0, 1], [L, -1]]) {
+      path(P, [[x0, W / 2 - 20.16], [x0 + s * 16.5, W / 2 - 20.16], [x0 + s * 16.5, W / 2 + 20.16], [x0, W / 2 + 20.16]]);
+      path(P, [[x0, W / 2 - 9.16], [x0 + s * 5.5, W / 2 - 9.16], [x0 + s * 5.5, W / 2 + 9.16], [x0, W / 2 + 9.16]]);
+      const arc = circle(x0 + s * 11, W / 2, 9.15, 96).filter(([x]) => s * (x - x0) > 16.5);
+      path(P, arc);
+      const g0 = W / 2 - 3.66, g1 = W / 2 + 3.66;
+      path(P, [[x0, g0, 0], [x0, g0, 2.44], [x0, g1, 2.44], [x0, g1, 0]]);
+    }
+  }
+
+  function drawPlayers(P, players) {
+    const items = players.map(p => { const f = P(p.x, p.y, 0); return { ...p, f }; });
+    items.sort((a, b) => state.cam === "tv" ? a.f[2] - b.f[2] : 0);
+    for (const it of items) {
+      const [x, y, k] = it.f;
+      if (state.cam === "tv") {
+        ctx.fillStyle = "rgba(0,0,0,0.28)";
+        ctx.beginPath(); ctx.ellipse(x + k * 0.1, y, k * 0.42, k * 0.16, 0, 0, 2 * Math.PI); ctx.fill();
+        ctx.strokeStyle = COL[it.side]; ctx.lineCap = "round"; ctx.lineWidth = k * 0.42;
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y - k * 1.45); ctx.stroke();
+        ctx.fillStyle = COL[it.side]; ctx.strokeStyle = "#10151a"; ctx.lineWidth = Math.max(1, k * 0.04);
+        ctx.beginPath(); ctx.arc(x, y - k * 1.75, k * 0.3, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+      } else {
+        ctx.fillStyle = COL[it.side]; ctx.strokeStyle = "#0e1113"; ctx.lineWidth = 1.5 * scale;
+        ctx.beginPath(); ctx.arc(x, y, 0.95 * k, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+      }
+    }
+  }
+
+  function drawBall(P, ball) {
+    if (ball) {
+      state.lastBall = ball;
+      const g = P(ball.x, ball.y, 0), up = P(ball.x, ball.y, state.cam === "tv" ? 0.3 : 0);
+      const r = state.cam === "tv" ? g[2] * 0.15 : Math.max(4 * scale, g[2] * 0.55);
+      if (state.cam === "tv") { ctx.fillStyle = "rgba(0,0,0,0.35)"; ctx.beginPath(); ctx.ellipse(g[0], g[1], r, r * 0.4, 0, 0, 2 * Math.PI); ctx.fill(); }
+      ctx.fillStyle = "#ffffff"; ctx.strokeStyle = "#111"; ctx.lineWidth = 1.2 * scale;
+      ctx.beginPath(); ctx.arc(up[0], up[1], Math.max(r, 3.5 * scale), 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+    } else if (state.lastBall) {
+      const g = P(state.lastBall.x, state.lastBall.y, 0);
+      const r = Math.max(10 * scale, g[2] * (state.cam === "tv" ? 0.6 : 1.6));
+      ctx.setLineDash([4 * scale, 4 * scale]); ctx.strokeStyle = "rgba(255,255,255,0.75)"; ctx.lineWidth = 1.4 * scale;
+      ctx.beginPath(); ctx.arc(g[0], g[1], r, 0, 2 * Math.PI); ctx.stroke(); ctx.setLineDash([]);
+    }
+  }
+
+  function frameAt(t) { return Math.min(Math.floor(t * fps), truth.length - 1); }
+
+  function updateHud(t) {
+    const f = frameAt(t), pred = levels[state.level].pred;
+    const call = pred[f], tr = truth[f];
+    const chip = $("chip"); chip.textContent = CHIP[call]; chip.style.background = COL[call];
+    $("truth").innerHTML = `truth: ${NAME[tr]} <i style="color:${call === tr ? "#7fd18b" : "#ff8a7a"}">${call === tr ? "✓" : "✗"}</i>`;
+    let h = 0, a = 0, agree = 0;
+    for (let i = 0; i <= f; i++) { if (pred[i] === H) h++; else if (pred[i] === A) a++; if (pred[i] === truth[i]) agree++; }
+    const tot = Math.max(h + a, 1);
+    $("shareH").style.width = (100 * h / tot) + "%"; $("shareA").style.width = (100 * a / tot) + "%";
+    $("shareHn").textContent = `home ${Math.round(100 * h / tot)}%`; $("shareAn").textContent = `away ${Math.round(100 * a / tot)}%`;
+    $("agree").textContent = Math.round(100 * agree / (f + 1)) + "%";
+    $("poss").textContent = `${countPoss(truth, f)} vs ${countPoss(pred, f)}`;
+    $("full").textContent = levels[state.level].spell_f1.toFixed(3);
+    const m = Math.floor(t / 60), s = Math.floor(t % 60);
+    $("clock").textContent = `${m}:${String(s).padStart(2, "0")} / ${data.minutes}:00`;
+    $("lost").classList.toggle("on", !ballAt(t));
+  }
+
+  function countPoss(codes, f) {
+    let n = 0, prev = -1;
+    for (let i = 0; i <= f; i++) { const c = codes[i]; if (c !== prev && (c === H || c === A)) n++; prev = c; }
+    return n;
+  }
+
+  function drawTimeline() {
+    if (!data) return;
+    const w = tl.width, h = tl.height, pred = levels[state.level].pred, n = truth.length;
+    tctx.fillStyle = "#0f1215"; tctx.fillRect(0, 0, w, h);
+    const left = Math.round(58 * (w / tl.getBoundingClientRect().width)), right = w - 6;
+    const rowH = h * 0.27, rows = [[truth, h * 0.06, "truth"], [pred, h * 0.38, "model"]];
+    tctx.font = `${Math.round(11 * w / tl.getBoundingClientRect().width)}px Archivo, sans-serif`;
+    for (const [codes, y, label] of rows) {
+      tctx.fillStyle = "#b9b5aa"; tctx.fillText(label, 8 * w / tl.getBoundingClientRect().width, y + rowH * 0.68);
+      let start = 0;
+      for (let i = 1; i <= n; i++) {
+        if (i === n || codes[i] !== codes[start]) {
+          tctx.fillStyle = COL[codes[start]] || "#333";
+          const x0 = left + (right - left) * start / n, x1 = left + (right - left) * i / n;
+          tctx.fillRect(x0, y, Math.max(1, x1 - x0), rowH);
+          start = i;
+        }
+      }
+    }
+    const B = levels[state.level].ball, nb = B.length / 2, y = h * 0.74;
+    tctx.fillStyle = "#c9c5bb";
+    for (let i = 0; i < nb; i++) if (B[i * 2] >= 0) tctx.fillRect(left + (right - left) * i / nb, y, Math.max(1, (right - left) / nb + 0.5), h * 0.16);
+    tctx.fillStyle = "#7f7c74"; tctx.fillText("ball", 8 * w / tl.getBoundingClientRect().width, y + h * 0.14);
+    tl._geom = { left, right };
+    const x = left + (right - left) * state.t / dur;
+    tctx.fillStyle = "#ffffff"; tctx.fillRect(x - 1, 0, 2, h);
+  }
+
+  let last = performance.now();
+  function tick(now) {
+    const dt = Math.min(0.1, (now - last) / 1000); last = now;
+    if (state.playing) { state.t += dt * state.speed; if (state.t >= dur) state.t = 0; }
+    const ball = ballAt(state.t), players = playerAt(state.t);
+    const target = Math.max(28, Math.min(L - 28, ball ? ball.x : players.reduce((s, p) => s + p.x, 0) / Math.max(players.length, 1)));
+    state.lookX += (target - state.lookX) * (1 - Math.exp(-dt * state.speed / 1.2));
+    const P = makeProjector();
+    drawPitch(P); drawPlayers(P, players); drawBall(P, ball);
+    updateHud(state.t); drawTimeline();
+    requestAnimationFrame(tick);
+  }
+
+  function seekFromEvent(ev) {
+    const r = tl.getBoundingClientRect(), g = tl._geom; if (!g) return;
+    const px = (ev.clientX - r.left) * (tl.width / r.width);
+    state.t = Math.max(0, Math.min(dur - 0.01, (px - g.left) / (g.right - g.left) * dur));
+    state.lastBall = null;
+  }
+  let dragging = false;
+  tl.addEventListener("pointerdown", e => { dragging = true; tl.setPointerCapture(e.pointerId); seekFromEvent(e); });
+  tl.addEventListener("pointermove", e => { if (dragging) seekFromEvent(e); });
+  tl.addEventListener("pointerup", () => { dragging = false; });
+
+  function group(id, key, after) {
+    $(id).addEventListener("click", e => {
+      const b = e.target.closest("button"); if (!b) return;
+      [...$(id).children].forEach(c => c.classList.toggle("on", c === b));
+      state[key] = key === "speed" ? parseFloat(b.dataset.v) : b.dataset.v;
+      if (after) after();
+    });
+  }
+  group("speed", "speed"); group("cam", "cam"); group("level", "level", () => { state.lastBall = null; });
+  const togglePlay = () => { state.playing = !state.playing; $("play").textContent = state.playing ? "Pause" : "Play"; };
+  $("play").addEventListener("click", togglePlay);
+  window.addEventListener("keydown", e => {
+    if (e.code === "Space") { e.preventDefault(); togglePlay(); }
+    if (e.code === "ArrowRight") state.t = Math.min(dur - 0.01, state.t + 5);
+    if (e.code === "ArrowLeft") state.t = Math.max(0, state.t - 5);
+  });
+  window.addEventListener("resize", resize);
+
+  fetch("demo.json").then(r => r.json()).then(d => {
+    data = d; L = d.pitch[0]; W = d.pitch[1]; fps = d.fps; dur = d.minutes * 60;
+    nP = d.n_home + d.n_away; d.frames_p = d.players.length / (nP * 2);
+    const n = Math.round(dur * fps);
+    truth = expand(d.truth, n);
+    for (const [k, v] of Object.entries(d.levels)) levels[k] = { ...v, pred: expand(v.pred, n) };
+    state.t = 75;
+    resize(); requestAnimationFrame(t => { last = t; tick(t); });
+  });
+})();
+</script>
+</body>
+</html>
