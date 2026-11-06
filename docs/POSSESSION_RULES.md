@@ -66,13 +66,13 @@ latest source frame at or before each output frame.
 The ball is dead from the moment it leaves the pitch or play is stopped until the restart is
 taken. The pipeline (`src/agamemnon/deadball.py`) looks for:
 
-- **Out of bounds.** The ball last seen more than 0.5 m beyond a touchline or goal line (the margin
+- Out of bounds: the ball last seen more than 0.5 m beyond a touchline or goal line (the margin
   absorbs tracking noise; the ball is out only when wholly over the line, and 0.5 m covers the ball
   radius plus jitter). A ball that disappears outside the lines stays out until seen again.
-- **Collective stoppage.** Players walking rather than running (median and upper-quartile speed
+- Collective stoppage: players walking rather than running (median and upper-quartile speed
   over 1 s and 3 s windows) together with a ball that is held still or not seen.
-- **Kick-off set-ups.** Nearly every player in his own half and the ball near the centre spot.
-- **Smart Tagging.** A SET PIECES interval (and the 2 s before it) marks a restart nearby; a GOALS
+- Kick-off set-ups: nearly every player in his own half and the ball near the centre spot.
+- Smart Tagging: a SET PIECES interval (and the 2 s before it) marks a restart nearby; a GOALS
   interval is followed by up to 60 s of stoppage before the kick-off. Tags are automatic and can be
   missed or wrong, so they are weighted evidence, not rules.
 
