@@ -52,6 +52,28 @@ them costs at most 0.012, and team shape is the only group whose removal changes
 in opposite directions. Without tags the locked network still scores 0.620, against 0.613 for a
 network that never saw tags, so it does not depend on them being present.
 
+## Stability of the locked decoder
+
+Each tuned constant scaled by 0.5 and 1.5, one at a time, on the out-of-fold outputs of all 108
+cells (`python scripts/sweep.py --oof cv_w96`). "Worst cell" is the lowest single game and
+degradation level. This documents the shape of the optimum; no locked value was changed.
+
+| variant | balanced spellF1 | worst cell spellF1 | balanced macroF1 |
+|---|---|---|---|
+| locked | 0.703 | 0.557 | 0.908 |
+| NN_TEMPER x0.5 | 0.699 | 0.551 | 0.907 |
+| NN_TEMPER x1.5 | 0.700 | 0.557 | 0.908 |
+| NN_DEAD_BIAS x0.5 | 0.702 | 0.556 | 0.908 |
+| NN_DEAD_BIAS x1.5 | 0.702 | 0.558 | 0.908 |
+| SWITCH_COST x0.5 | 0.696 | 0.551 | 0.908 |
+| SWITCH_COST x1.5 | 0.703 | 0.562 | 0.908 |
+| END_COST x0.5 | 0.702 | 0.560 | 0.908 |
+| END_COST x1.5 | 0.702 | 0.557 | 0.908 |
+| START_COST x0.5 | 0.702 | 0.561 | 0.908 |
+| START_COST x1.5 | 0.703 | 0.557 | 0.908 |
+| SNAP_WINDOW_S x0.5 | 0.703 | 0.557 | 0.908 |
+| SNAP_WINDOW_S x1.5 | 0.702 | 0.559 | 0.908 |
+
 Reproduce:
 
     python scripts/fetch_external.py && python scripts/build_cells.py
