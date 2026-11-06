@@ -53,7 +53,24 @@ The possession and dead-ball rules, and how external labels are mapped onto them
 
 ## Results
 
-Benchmark results are added once the configuration is locked; see [docs/BENCHMARK.md](docs/BENCHMARK.md).
+On 27 external matches (7 IDSSE, 20 SkillCorner) with tracking degraded at four levels, each match
+scored by a network that never saw it:
+
+| | spellF1 | macroF1 |
+|---|---|---|
+| locked pipeline, nested decoder selection | 0.681 (per match 0.585 to 0.774) | |
+| locked pipeline, locked decoder | 0.703 | 0.908 |
+| same, without Smart Tagging | 0.617 | 0.884 |
+| earlier logistic emissions | 0.501 | |
+
+On the public 5-minute slice of the competition match, scored once after the parameters were locked
+in commit `f30c2ba`: spellF1 0.519 (bootstrap 5-95%: 0.31 to 0.71) and macroF1 0.845, against
+0.424 and 0.581 for the best published baseline. The slice has 17 possessions, so this is a
+pipeline check, not an estimate of the full-match score. Official scores are computed by the
+organisers on the private full-match ground truth.
+
+Ablations and a stability sweep are in [docs/BENCHMARK.md](docs/BENCHMARK.md); the method, the
+development protocol and the limitations are in [docs/TECHNICAL_REPORT.md](docs/TECHNICAL_REPORT.md).
 
 ## Reproduce
 
@@ -65,7 +82,8 @@ python -m agamemnon.pipeline --out evaluation/results/Agamemnon.csv
 python evaluation/validate_submission.py evaluation/results/Agamemnon.csv
 ```
 
-or `bash scripts/reproduce.sh`, which does the same and prints the md5 of the file.
+or `bash scripts/reproduce.sh`, which also runs the tests and prints the md5 of the file. The
+pipeline takes about 12 s on a laptop CPU; two runs from a fresh clone give the same md5.
 
 The external benchmark (downloads about 4.5 GB):
 
@@ -83,7 +101,7 @@ src/agamemnon/      loader, features, deadball, decoder, tcn (numpy inference), 
   external/         IDSSE and SkillCorner converters, label mapping, degradation, benchmark
   models/tcn.json   trained network weights
 scripts/            reproduce.sh, fetch_external, build_cells, run_bench, tune, train_tcn,
-                    sanity_report, inspect_schema, priors_table
+                    ablation, sweep, sanity_report, inspect_schema, priors_table, jobctl
 tests/              synthetic tests for every parser, converter and decoder step
 docs/               possession rules, priors, external data, benchmark, technical report
 evaluation/ starter/ games.py   from the organisers' starter kit (MIT), unchanged
