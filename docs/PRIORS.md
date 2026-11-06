@@ -6,7 +6,12 @@ Nothing here was measured on, fitted to or tuned against the competition match o
 
 This file is generated from `src/agamemnon/priors.py` by `scripts/priors_table.py`, and
 `tests/test_priors.py` fails if the two disagree. The network weights are in
-`src/agamemnon/models/tcn.json`, produced by `scripts/train_tcn.py --final`.
+`src/agamemnon/models/tcn.json`, produced by `scripts/train_tcn.py --final` (commit 60b5f12). The decoder
+values marked E come from `scripts/train_tcn.py --folds 5 --name cv_w96` followed by
+`scripts/tune.py --emission network --oof cv_w96` (commit fccc312).
+
+These values were locked before the public ground truth was scored for the first time. Any later
+change is listed under Amendments with its date and a reason that is not a score.
 
 | name | value | source | rationale | produced by |
 |---|---|---|---|---|
