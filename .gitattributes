@@ -1,3 +1,7 @@
 * text=auto eol=lf
 *.png binary
 *.pdf binary
+
+# Organisers' starter kit: keep it out of the language statistics
+starter/** linguist-vendored
+evaluation/** linguist-vendored
