@@ -7,8 +7,9 @@
 3. The chosen configuration maximises the mean spellF1 over the two datasets (each dataset counts
    once, whatever its number of games) minus half the standard deviation across games, so a
    setting that wins on some games and collapses on others loses.
-4. Nested estimate: for each held-out game, the configuration that is best on the other games is
-   scored on it. That number is what the benchmark reports as the honest expectation.
+4. Nested estimate: for each held-out game, the configuration that is best on the other games
+   (same objective, computed without that game) is scored on it. The mean of those scores is the
+   number the benchmark reports for a game the tuning never saw.
 
     python scripts/tune.py --configs 150 --workers 8
     python scripts/tune.py --final        # refit emission weights on all games, print priors
@@ -87,9 +88,12 @@ def training_rows(cells, tags=True):
         g = idx[gt[idx] < 3]
         alive = g[(gt[g] == H) | (gt[g] == A)]
         w = 1.0 / per_dataset[cell.dataset]
-        team_X.append(Xt[alive]); team_y.append(gt[alive] == H)
+        team_X.append(Xt[alive])
+        team_y.append(gt[alive] == H)
         team_w.append(np.full(len(alive), w))
-        dead_X.append(Xd[g]); dead_y.append(gt[g] == D); dead_w.append(np.full(len(g), w))
+        dead_X.append(Xd[g])
+        dead_y.append(gt[g] == D)
+        dead_w.append(np.full(len(g), w))
     cat = np.concatenate
     return (cat(team_X), cat(team_y), cat(team_w), cat(dead_X), cat(dead_y), cat(dead_w))
 
@@ -130,6 +134,14 @@ def evaluate(keys, coefs, configs, workers, tags=True):
     return rows
 
 
+def objective(game_spell):
+    """(dataset-balanced mean spellF1, std across games) of {(dataset, game): spellF1}."""
+    datasets = sorted({ds for ds, _ in game_spell})
+    balanced = np.mean([np.mean([v for (ds, _), v in game_spell.items() if ds == d])
+                        for d in datasets])
+    return float(balanced), float(np.std(list(game_spell.values())))
+
+
 def summarise(rows, n_configs):
     """Per config: dataset-balanced mean spellF1, std across games, macroF1."""
     table = []
@@ -141,24 +153,32 @@ def summarise(rows, n_configs):
         game_spell = {k: np.mean([v[0] for v in vals]) for k, vals in by_game.items()}
         game_macro = {k: np.mean([v[1] for v in vals]) for k, vals in by_game.items()}
         datasets = sorted({k[0] for k in game_spell})
-        ds_mean = [np.mean([v for k, v in game_spell.items() if k[0] == d]) for d in datasets]
-        spell = float(np.mean(ds_mean))
-        std = float(np.std(list(game_spell.values())))
+        spell, std = objective(game_spell)
         macro = float(np.mean([np.mean([v for k, v in game_macro.items() if k[0] == d])
                                for d in datasets]))
         table.append({"config": ci, "spell": spell, "std": std, "macro": macro,
                       "objective": spell - 0.5 * std,
-                      "per_dataset": dict(zip(datasets, map(float, ds_mean))),
+                      "per_dataset": {d: float(np.mean([v for k, v in game_spell.items()
+                                                        if k[0] == d])) for d in datasets},
                       "per_game": {k[1]: float(v) for k, v in game_spell.items()}})
     return table
 
 
 def nested_estimate(table, games):
-    """For each held-out game, pick the best config on the others and score it on that game."""
+    """For each held-out game, pick the best config on the others and score it on that game.
+
+    The pick uses the same objective as the final selection, computed without the held-out game.
+    `games` are "dataset-id" names, as in the table.
+    """
+    def without(t, held):
+        return {(g.split("-", 1)[0], g): v for g, v in t["per_game"].items() if g != held}
+
     out = {}
     for g in games:
-        best = max(table, key=lambda t: np.mean([v for k, v in t["per_game"].items() if k != g])
-                   - 0.5 * np.std([v for k, v in t["per_game"].items() if k != g]))
+        def score(t):
+            spell, std = objective(without(t, g))
+            return spell - 0.5 * std
+        best = max(table, key=score)
         out[g] = (best["config"], best["per_game"][g])
     return out
 
@@ -224,9 +244,11 @@ def main():
             {k: round(v, 4) for k, v in t["per_dataset"].items()}))
     best = ranked[0]
     print("\nbest config:", json.dumps(configs[best["config"]], indent=1))
-    est = [v[1] for v in nested.values()]
-    print("nested leave-one-game-out spellF1: mean {:.4f}  min {:.4f}  max {:.4f}".format(
-        np.mean(est), np.min(est), np.max(est)))
+    est = {(g.split("-", 1)[0], g): v[1] for g, v in nested.items()}
+    values = list(est.values())
+    print("nested leave-one-game-out spellF1: mean over games {:.4f}  min {:.4f}  max {:.4f}  "
+          "dataset-balanced {:.4f}".format(np.mean(values), np.min(values), np.max(values),
+                                           objective(est)[0]))
     print("done in {:.0f}s".format(time.time() - t0))
 
 
