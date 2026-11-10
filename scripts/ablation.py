@@ -11,6 +11,7 @@ network never saw. Network input ablations retrain fold 0 without a feature grou
 import argparse
 import os
 import sys
+from concurrent.futures import ProcessPoolExecutor
 from types import SimpleNamespace
 
 import numpy as np
@@ -60,7 +61,6 @@ def main():
     parser.add_argument("--variants", nargs="*", default=list(VARIANTS))
     args = parser.parse_args()
     os.environ["AGAMEMNON_OOF"] = args.oof
-    from concurrent.futures import ProcessPoolExecutor
     keys = [(d, m, lv) for d, m in bench.all_games() for lv in bench.LEVELS]
     if args.within:
         folder = os.path.join(CACHE_DIR, args.within)

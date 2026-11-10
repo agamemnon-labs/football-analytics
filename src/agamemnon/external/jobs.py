@@ -59,7 +59,7 @@ class Job:
         if os.path.isfile(self.pause_path):
             os.remove(self.pause_path)
         self.fields = {"job": self.name, "pid": os.getpid(), "host": socket.gethostname(),
-                       "command": " ".join([".venv/Scripts/python", "-u"] + sys.argv),
+                       "command": " ".join([sys.executable, "-u"] + sys.argv),
                        "started": time.time()}
         self.update(state="starting", **fields)
 

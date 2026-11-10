@@ -64,7 +64,7 @@ env/
 .DS_Store
 
 # -- team additions ------------------------------------------------------------------------------
-# Downloaded external datasets and derived bench caches. Licences allow use, not redistribution here.
+# External datasets and benchmark caches: several GB, fetched by scripts/fetch_external.py.
 /external/
 .pytest_cache/
 *.egg-info/

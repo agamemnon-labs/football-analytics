@@ -9,6 +9,7 @@ optimum is; it does not change any locked value.
 import argparse
 import os
 import sys
+from concurrent.futures import ProcessPoolExecutor
 
 import numpy as np
 
@@ -28,7 +29,6 @@ def main():
     parser.add_argument("--workers", type=int, default=8)
     args = parser.parse_args()
     os.environ["AGAMEMNON_OOF"] = args.oof
-    from concurrent.futures import ProcessPoolExecutor
     keys = [(d, m, lv) for d, m in bench.all_games() for lv in bench.LEVELS]
     chunks = [c for c in (keys[i::args.workers] for i in range(args.workers)) if c]
     variants = [("locked", {})] + [("{} x{}".format(p, f), {"_scale": (p, f)})

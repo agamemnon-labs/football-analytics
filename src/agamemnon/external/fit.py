@@ -13,7 +13,7 @@ def logistic(X, y, l2=1.0, weights=None):
     y = np.asarray(y, dtype=np.float64)
     w = np.ones(len(y)) if weights is None else np.asarray(weights, dtype=np.float64)
     w = w / w.sum()
-    penalty = np.full(X.shape[1], l2 / len(y) * 0 + l2)
+    penalty = np.full(X.shape[1], float(l2))
     penalty[0] = 0.0
 
     def loss(beta):

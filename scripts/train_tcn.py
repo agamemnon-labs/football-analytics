@@ -19,13 +19,14 @@ Needs `pip install -r requirements-train.txt` (torch); inference (src/agamemnon/
 import argparse
 import io
 import os
+import subprocess
 import sys
 import time
 
 import numpy as np
 
-import torch  # noqa: E402
-from torch import nn  # noqa: E402
+import torch
+from torch import nn
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "src"))
@@ -341,7 +342,6 @@ def alive(pid):
     if not pid:
         return False
     if os.name == "nt":
-        import subprocess
         out = subprocess.run(["tasklist", "/FI", "PID eq {}".format(pid), "/NH", "/FO", "CSV"],
                              capture_output=True, text=True).stdout
         return '","{}",'.format(pid) in out
@@ -392,6 +392,7 @@ def run_folds(args, games, keys, device, job):
                                 logp_notags=logp_nt.astype(np.float32))
             atomic_write_bytes(outputs[key], buffer.getvalue())
         job.update(inference_left=0)
+
 
 if __name__ == "__main__":
     main()
