@@ -60,17 +60,23 @@ def ground_truth(match):
 def synthetic_tags(match, seed_name):
     """Smart-Tagging-like intervals generated from a game's own labels, with realistic flaws.
 
-    Restarts become SET PIECES (often missed, throw-ins always N/A, sometimes the wrong team),
-    goals become GOALS, and a share of possessions get a phase tag for the attacking or the
-    defending side, with timing noise and some false positives.
+    The intervals have the shape of the real file, which is fixed-length windows rather than
+    events: a set piece opens a few seconds before the restart and lasts 35 s (5 s for a
+    kick-off), a goal interval runs from the build-up until after the kick-off that follows,
+    and a phase is a 10 to 30 s window that starts near a possession and often outlives it.
+    On top of that restarts are often missed, throw-ins and kick-offs after goals carry no
+    team, some teams are wrong, and some phases are false positives.
     """
     rng = np.random.default_rng(zlib.crc32(("tags|" + seed_name).encode()))
     fps = match.fps
     length, width = match.pitch
     lab = match.labels
     tags = []
-    jitter = lambda: int(rng.uniform(-1.0, 1.0) * fps)
     centre = np.array([length / 2, width / 2])
+
+    def seconds(lo, hi):
+        return int(rng.uniform(lo, hi) * fps)
+
     for p_start, p_stop in match.periods:
         seg = lab[p_start:p_stop]
         spells = pm.segments(seg, [(0, len(seg))])
@@ -78,6 +84,7 @@ def synthetic_tags(match, seed_name):
             a, b = a + p_start, b + p_start
             if k == D:
                 continue
+            other = A if k == H else H
             prev = spells[i - 1][2] if i > 0 else D
             if prev == D:
                 bx, by = match.ball[a] if not np.isnan(match.ball[a, 0]) else (np.nan, np.nan)
@@ -86,42 +93,41 @@ def synthetic_tags(match, seed_name):
                 kind = ("Kick Off (Start)" if a == p_start or i <= 1 else
                         "Kick Off (After Goal)" if at_centre else
                         "Throw-in" if throw_in else "Free Kick")
+                kick_off = kind.startswith("Kick Off")
                 if kind == "Kick Off (After Goal)" and i >= 2 and rng.random() < 0.9:
-                    end = spells[i - 2][1] + p_start
-                    scorer = A if k == H else H
-                    tags.append(Tag(GOALS, end - int(2 * fps) + jitter(), end + int(fps),
-                                    scorer, None))
-                if rng.random() < (0.9 if kind.startswith("Kick Off") else 0.45):
+                    goal = spells[i - 2][1] + p_start
+                    tags.append(Tag(GOALS, goal - seconds(20, 90), a + seconds(20, 100), other,
+                                    None))
+                if rng.random() < (0.9 if kick_off else 0.45):
                     team = k
                     if kind == "Throw-in" or kind == "Kick Off (After Goal)":
                         team = None
                     elif rng.random() < 0.08:
                         team = None
                     elif rng.random() < 0.07:
-                        team = A if k == H else H
-                    start = a - int(rng.uniform(0.5, 4.0) * fps)
-                    tags.append(Tag(SET_PIECES, start, a + int(rng.uniform(0.5, 4.0) * fps),
+                        team = other
+                    start = a - seconds(2.0, 6.0)
+                    tags.append(Tag(SET_PIECES, start, start + int((5 if kick_off else 35) * fps),
                                     team, kind))
-            # Phases are not possessions: they start and stop off the hand-over, and one in five
-            # runs on into the next possession (DATA.md: a phase "can cover two").
-            if b - a >= 3 * fps and rng.random() < 0.55:
-                lo = a + int(rng.uniform(-2, 3) * fps)
-                hi = b + int(rng.uniform(-3, 2) * fps)
-                if rng.random() < 0.2:
-                    hi = b + int(rng.uniform(1, 6) * fps)
-                if hi > lo:
-                    if rng.random() < 0.6:
-                        code, team = ATTACK[rng.integers(len(ATTACK))], k
-                    else:
-                        code, team = DEFEND[rng.integers(len(DEFEND))], (A if k == H else H)
-                    if rng.random() < 0.1:
-                        team = A if team == H else H
-                    tags.append(Tag(code, lo, hi, team, None))
+            # A phase is tagged once for the side attacking and once for the side defending,
+            # over the same window; the window does not know where the possession ends.
+            if b - a >= 3 * fps and rng.random() < 0.75:
+                lo = a + seconds(-3, 3)
+                hi = lo + (int(30 * fps) if rng.random() < 0.3 else seconds(10, 30))
+                attacking = other if rng.random() < 0.1 else k
+                defending = A if attacking == H else H
+                tags.append(Tag(ATTACK[rng.integers(len(ATTACK))], lo, hi, attacking, None))
+                tags.append(Tag(DEFEND[rng.integers(len(DEFEND))], lo, hi, defending, None))
+                # Ball-in-final-third and players-in-the-box windows come without a partner
+                # and start later in the attack.
+                if rng.random() < 0.5:
+                    lo = a + seconds(0, 10)
+                    tags.append(Tag(ATTACK[rng.integers(len(ATTACK))], lo, lo + seconds(15, 40),
+                                    attacking, None))
         # False positives: about one every three minutes.
         for _ in range(rng.poisson((p_stop - p_start) / (fps * 180))):
             s = int(rng.integers(p_start, p_stop))
-            code = ATTACK[rng.integers(len(ATTACK))]
-            tags.append(Tag(code, s, s + int(rng.uniform(3, 10) * fps),
+            tags.append(Tag(ATTACK[rng.integers(len(ATTACK))], s, s + seconds(10, 30),
                             H if rng.random() < 0.5 else A, None))
     return sorted(tags, key=lambda t: t.start)
 
