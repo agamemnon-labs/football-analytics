@@ -40,7 +40,7 @@ ROWS = {
     "TOUCH_MEMORY_S": ("C", "a pass takes one to two seconds to arrive", "-"),
     "SPREAD_SCALE": ("A", "team spread difference per unit", "-"),
     "SETPIECE_PRE_S": ("C", "tagged set pieces mark a window around the restart (starter docs)", "-"),
-    "POST_GOAL_S": ("C", "celebration and kick-off take up to about a minute", "-"),
+    "SETPIECE_WINDOW_S": ("C", "the tagging marks about a 5 s window around the restart (starter docs)", "-"),
     "TEAM_COEF": ("E", "logistic team model, fitted on all external games", TUNE + " --final"),
     "DEAD_COEF": ("E", "logistic dead-ball model, fitted on all external games", TUNE + " --final"),
     "TEAM_TEMPER": ("E", "logistic emissions: per-frame log-odds are correlated", TUNE),

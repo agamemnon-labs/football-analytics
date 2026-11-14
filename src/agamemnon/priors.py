@@ -30,7 +30,7 @@ NEAR_RADIUS = 5.0              # m; players able to contest the ball within abou
 TOUCH_MEMORY_S = 2.0           # s; decay of "who touched it last"
 SPREAD_SCALE = 3.0             # m of team-spread difference per unit
 SETPIECE_PRE_S = 2.0           # s before a Smart Tagging set piece starts that may still be dead
-POST_GOAL_S = 60.0             # s after a goal during which a kick-off restart is expected
+SETPIECE_WINDOW_S = 5.0        # s from the start of a set-piece interval that hold its restart
 
 # -- emission model coefficients (E, fitted by scripts/tune.py) ----------------------------------
 # Logistic models over features.team_design / features.dead_design; see decoder.py.

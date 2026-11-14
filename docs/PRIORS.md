@@ -34,7 +34,7 @@ change is listed under Amendments with its date and a reason that is not a score
 | `TOUCH_MEMORY_S` | `2` | C | a pass takes one to two seconds to arrive | - |
 | `SPREAD_SCALE` | `3` | A | team spread difference per unit | - |
 | `SETPIECE_PRE_S` | `2` | C | tagged set pieces mark a window around the restart (starter docs) | - |
-| `POST_GOAL_S` | `60` | C | celebration and kick-off take up to about a minute | - |
+| `SETPIECE_WINDOW_S` | `5` | C | the tagging marks about a 5 s window around the restart (starter docs) | - |
 | `TEAM_COEF` | `(0.1152, 0.041, 0.3059, 0.9613, 0.5459, 0.9801, 0.1021, -3.1858, 0, 0, 0, 2.234)` | E | logistic team model, fitted on all external games | scripts/tune.py --final |
 | `DEAD_COEF` | `(8.6778, -0.2149, 0.3634, 1.8751, 1.1234, 1.0611, 1.9755, -2.2193, -3.4979, 6.7944, -1.0086, -0.8435, -3.5865, -1.3592, 0.1562, 0.0806, 3.2228)` | E | logistic dead-ball model, fitted on all external games | scripts/tune.py --final |
 | `TEAM_TEMPER` | `0.29` | E | logistic emissions: per-frame log-odds are correlated | scripts/tune.py |

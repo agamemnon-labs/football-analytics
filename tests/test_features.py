@@ -86,6 +86,14 @@ def test_tag_features_follow_the_code_and_the_team():
     assert (team[1500:1600] == 0).all()           # throw-in with no team
     pre = int(priors.SETPIECE_PRE_S * FPS)
     assert setpiece[1000 - pre] == 1 and setpiece[1000 - pre - 1] == 0 and setpiece[1099] == 1
-    after = int(priors.POST_GOAL_S * FPS)
-    assert post_goal[2049] == 0 and post_goal[2050] == 1 and post_goal[2050 + after - 1] == 1
-    assert post_goal[2050 + after] == 0
+    assert post_goal[1999] == 0 and post_goal[2000:2050].all() and post_goal[2050] == 0
+
+
+def test_set_piece_evidence_stops_a_few_seconds_into_a_long_interval():
+    n = 3000
+    m = match(np.zeros((n, 2)), np.zeros((n, 2, 2)), [H, A],
+              tags=[Tag(SET_PIECES, 1000, 1000 + int(35 * FPS), H, "Throw-in")])
+    team, setpiece, _ = deadball.tag_features(m, priors)
+    window = int(priors.SETPIECE_WINDOW_S * FPS)
+    assert setpiece[1000 + window - 1] == 1 and setpiece[1000 + window] == 0
+    assert (team[1000:1000 + int(35 * FPS)] == 1).all()

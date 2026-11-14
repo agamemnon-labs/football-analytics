@@ -31,9 +31,9 @@ duel. We apply one rule to both datasets (`src/agamemnon/external/mapping.py`):
 4. Repeat until nothing changes, since absorbing one touch can merge two runs of the same team.
 
 2.0 s is the low end of the "a player keeps the ball for a few seconds" proxy in CHALLENGE.md. On the
-first IDSSE match the rule takes the spell count from 511 to 329 (mean 6.7 s to 10.4 s); raising the
-threshold to 3 s or 4 s changes it by less than 10%, so the benchmark is not sensitive to the exact
-value.
+first IDSSE match the rule takes the spell count from 511 to 298 (mean 6.7 s to 11.5 s). The count
+does depend on the threshold: 3 s gives 241 spells and 4 s gives 215. We kept the low end because a
+higher threshold removes possessions that a player clearly controlled.
 
 A touch that happens just before the ball goes out (`H A D`, with `A` short) is given to `H`. This
 matches the rule that a loose ball stays with the last team in possession; the team that touched it

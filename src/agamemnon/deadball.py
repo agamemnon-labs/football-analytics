@@ -6,6 +6,11 @@ walking rather than running, and, around kick-offs, both teams back in their own
 Tagging adds SET PIECES and GOALS intervals, which are evidence of a stoppage nearby but are
 themselves automatic and can be wrong or missing, so they enter as features with fitted weights
 rather than as rules. The decoder turns this evidence into D runs; see decoder.py.
+
+Smart Tagging intervals are fixed-length windows, not events: a set piece opens a few seconds
+before its restart and then runs on for half a minute of open play, and a goal interval lasts
+from the build-up until after the kick-off that follows. So the restart evidence is tied to the
+start of a SET PIECES interval, and the goal evidence is the GOALS interval itself.
 """
 
 import numpy as np
@@ -24,7 +29,7 @@ DEAD_COLUMNS = ("bias", "seen", "log_age", "last_oob", "far_oob", "speed_1s", "s
 
 
 def tag_features(match, prm):
-    """(team prior in [-1, 1], set-piece window flag, post-goal flag) per frame."""
+    """(team prior in [-1, 1], restart window flag, goal interval flag) per frame."""
     n = match.n_frames
     fps = match.fps
     team = np.zeros(n, dtype=np.float32)
@@ -43,9 +48,9 @@ def tag_features(match, prm):
             team[lo:hi] -= sign
         if tag.code == SET_PIECES:
             pre = max(0, lo - int(prm.SETPIECE_PRE_S * fps))
-            setpiece[pre:hi] = 1.0
+            setpiece[pre:min(hi, lo + int(prm.SETPIECE_WINDOW_S * fps))] = 1.0
         if tag.code == GOALS:
-            post_goal[hi:min(n, hi + int(prm.POST_GOAL_S * fps))] = 1.0
+            post_goal[lo:hi] = 1.0
     return np.clip(team, -1, 1), setpiece, post_goal
 
 
