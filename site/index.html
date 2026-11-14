@@ -411,16 +411,16 @@
     <p class="source">The first ten minutes of an IDSSE Bundesliga match, called by a version of the network that
       never saw it. Players come from the clean tracking; the ball and the calls come from the degraded version you
       pick, which is what the model had to work with. This match is on the easy side: across all 27 test matches
-      the same setup averages 0.703, and 0.681 in the stricter nested estimate.</p>
+      the same setup averages 0.646.</p>
   </section>
 
   <section class="block wrap" aria-labelledby="numbers">
     <h2 id="numbers" class="section-title">The scoresheet</h2>
     <div class="figures">
-      <div><b>0.681</b><span>spellF1 on 27 matches it never saw</span><small>nested cross-validation, worst match 0.585</small></div>
-      <div><b>0.519</b><span>spellF1 on the public five minutes</span><small>best published baseline 0.424</small></div>
+      <div><b>0.646</b><span>spellF1 on 27 matches it never saw</span><small>nested cross-validation, both leagues weighted equally, worst match 0.51</small></div>
+      <div><b>0.457</b><span>spellF1 on the public five minutes</span><small>best published baseline 0.424; only 17 possessions, so read it loosely</small></div>
       <div><b>41%</b><span>of scored frames with no ball</span><small>in the competition match, per the organisers' data notes</small></div>
-      <div><b>12 s</b><span>to label a whole match</span><small>laptop CPU, same file on every machine</small></div>
+      <div><b>13 s</b><span>to label a whole match</span><small>laptop CPU, same file on every machine</small></div>
     </div>
   </section>
 
@@ -443,17 +443,17 @@
         <li><span class="n">03</span><div><h3>Pick one story</h3><p>A Viterbi decoder finds the most believable sequence
           for the whole half, paying a fee every time possession switches. That fee is what kills the flicker.</p></div></li>
         <li><span class="n">04</span><div><h3>Move the edges to the touch</h3><p>Each hand-over shifts to the first touch
-          of the team taking over, if there's one within 0.22 seconds. That's when it really changed hands.</p></div></li>
+          of the team taking over, if there's one within about half a second. That's when it really changed hands.</p></div></li>
       </ol>
     </div>
 
     <div class="bars">
-      <h3>How the score moved</h3>
+      <h3>Network against the simpler model</h3>
       <p>spellF1 on 27 external matches, each at four levels of tracking damage. Nested estimate: the decoder
-        settings are picked without looking at the match being scored. 1.0 would be every possession matched exactly.</p>
-      <div class="bar-row"><span class="name">Logistic regression on hand-made features, plus Viterbi</span><div class="bar-track"><div style="width:50.1%"></div></div><span class="val">0.501</span></div>
-      <div class="bar-row"><span class="name">Temporal CNN, 64 channels</span><div class="bar-track"><div style="width:61.1%"></div></div><span class="val">0.611</span></div>
-      <div class="bar-row lead"><span class="name">Temporal CNN, 96 channels, dropout, team-swap augmentation (submitted)</span><div class="bar-track"><div style="width:68.1%"></div></div><span class="val">0.681</span></div>
+        settings are picked without looking at the match being scored. 1.0 would be every possession matched exactly.
+        The network wins, but narrowly; most of the work is done by the clues and the decoder.</p>
+      <div class="bar-row"><span class="name">Logistic regression on the same clues, plus Viterbi</span><div class="bar-track"><div style="width:62.4%"></div></div><span class="val">0.624</span></div>
+      <div class="bar-row lead"><span class="name">Temporal CNN, 96 channels, plus Viterbi (submitted)</span><div class="bar-track"><div style="width:64.6%"></div></div><span class="val">0.646</span></div>
     </div>
   </section>
 
@@ -869,7 +869,7 @@
   window.addEventListener("resize", resize);
 
   // Versioned so a cached copy from an older page never meets this script.
-  fetch("demo.json?v=2").then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }).then(d => {
+  fetch("demo.json?v=3").then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }).then(d => {
     data = d; L = d.pitch[0]; W = d.pitch[1]; fps = d.fps; dur = d.minutes * 60; n = Math.round(dur * fps);
     nP = d.n_home + d.n_away; d.frames_p = d.players.length / (nP * 2);
     truth = expand(d.truth, n); truthPoss = possPrefix(truth);

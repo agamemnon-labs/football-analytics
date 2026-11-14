@@ -128,22 +128,33 @@ the network that had never seen it, so no peeking.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/benchmark-dark.png">
-  <img alt="spellF1 of three model versions, and how much spellF1 is lost by single changes" src="docs/assets/benchmark-light.png">
+  <img alt="spellF1 of the logistic and the network emission models, and how much spellF1 is lost by single changes" src="docs/assets/benchmark-light.png">
 </picture>
 
-The model we submitted scores a `spellF1` of 0.681 on those matches (0.585 on its worst match, 0.774
-on its best) and a `macroF1` of 0.908. Our first version, a pair of logistic regressions, got 0.501.
-The tactical tags are worth about 0.09; take them away and we still get 0.62.
+The model we submitted scores a `spellF1` of 0.646 on those matches (averaging the two leagues
+equally; 0.51 on its worst match, 0.73 on its best) and a `macroF1` of 0.892. A pair of logistic
+regressions in place of the network gets 0.624, so the network helps, but less than we'd like to
+brag about. The tactical tags are worth about 0.035; take them away and we still get 0.61.
 
-On the public five minutes of the actual match, which we ran exactly once, after locking every
-parameter (commit `f30c2ba`), we got 0.519 `spellF1` and 0.845 `macroF1`. The organisers' best
-baseline gets 0.424 and 0.581. Before anyone gets excited: five minutes is only 17 possessions, so
-that number could be anywhere from 0.31 to 0.71. It tells us the pipeline isn't broken, not who wins.
-The real score gets computed by the organisers on the full match, which none of us can see.
+A note on those numbers, because an earlier version of this page said 0.68. The open datasets
+don't come with tactical tags, so we generate imitation ones. Our first imitation was too tidy: its
+tags started and stopped where the possessions did, and real tags don't. When we checked the tags'
+structure against the real file (window lengths and counts only), the model trained on the tidy
+ones lost a lot of its score. So we rebuilt the imitation to look like the real thing, retrained,
+and now report the lower, more honest number. The whole story is in
+[docs/PRIORS.md](docs/PRIORS.md) under Amendments.
 
-The honest weak spot: we merge short possessions. On those five minutes we found 10 possessions where
+On the public five minutes of the actual match we got 0.457 `spellF1` and 0.877 `macroF1`. The
+organisers' best baseline gets 0.424 and 0.581. We have scored that slice twice in total: once for
+the first locked version (commit `f30c2ba`: 0.519 and 0.845) and once for this one (commit
+`c395595`), each time after the parameters were locked and pushed. Before anyone reads anything into
+the two numbers: five minutes is only 17 possessions, so this one could be anywhere from 0.24 to
+0.67. It tells us the pipeline isn't broken, not who wins, and we didn't use either score to choose
+anything. The real score gets computed by the organisers on the full match, which none of us can see.
+
+The honest weak spot: we merge short possessions. On those five minutes we found 11 possessions where
 there were 17. Lowering the switching fee would split more of them, but on the 27 training matches
-that actually makes the score worse, so we left it. Details, ablations and a stability check are in
+that doesn't make the score better, so we left it. Details, ablations and a stability check are in
 [docs/BENCHMARK.md](docs/BENCHMARK.md) and the [technical document](docs/TECHNICAL_REPORT.md).
 
 ## Run it yourself
@@ -157,7 +168,7 @@ python -m agamemnon.pipeline --out evaluation/results/Agamemnon.csv
 python evaluation/validate_submission.py evaluation/results/Agamemnon.csv
 ```
 
-Takes about 12 seconds. Or run `bash scripts/reproduce.sh`, which runs the tests first and prints
+Takes about 13 seconds. Or run `bash scripts/reproduce.sh`, which runs the tests first and prints
 the md5 of the result. Clone it fresh on another machine and you get the same file, byte for byte.
 
 Want to rebuild the benchmark (about 4.5 GB of downloads) and the figures on this page?

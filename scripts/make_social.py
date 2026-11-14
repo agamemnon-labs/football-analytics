@@ -58,8 +58,8 @@ h1 {{ position: absolute; left: 72px; top: 132px; margin: 0; font-family: Archiv
 <div class="side">
   <p>Ball possession called 25&nbsp;times a second from automatic tracking.</p>
   <div class="figs">
-    <div><b>0.681</b><span>spellF1, 27 unseen matches</span></div>
-    <div><b>12 s</b><span>per match, laptop CPU</span></div>
+    <div><b>0.646</b><span>spellF1, 27 unseen matches</span></div>
+    <div><b>13 s</b><span>per match, laptop CPU</span></div>
   </div>
 </div>
 <svg class="strip" width="{w}" height="80" shape-rendering="crispEdges">{strip}</svg>
