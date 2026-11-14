@@ -72,9 +72,10 @@ taken. The pipeline (`src/agamemnon/deadball.py`) looks for:
 - Collective stoppage: players walking rather than running (median and upper-quartile speed
   over 1 s and 3 s windows) together with a ball that is held still or not seen.
 - Kick-off set-ups: nearly every player in his own half and the ball near the centre spot.
-- Smart Tagging: a SET PIECES interval (and the 2 s before it) marks a restart nearby; a GOALS
-  interval is followed by up to 60 s of stoppage before the kick-off. Tags are automatic and can be
-  missed or wrong, so they are weighted evidence, not rules.
+- Smart Tagging: a SET PIECES interval is a fixed-length window, so only its first 5 s (and the
+  2 s before it) mark a restart nearby; a GOALS interval runs through the celebration to the
+  kick-off, so the whole of it counts as likely stoppage. Tags are automatic and can be missed or
+  wrong, so they are weighted evidence, not rules.
 
 None of these is a hard rule except the published period boundaries: frames before each half's
 kick-off are `D` (the second half is graded from frame 110808 and kicks off at 113742, FAQ.md).
@@ -98,6 +99,6 @@ several seconds.
 Contested balls stay with the team that had possession: the decoder needs sustained evidence
 (nearest players, touches, team shape) for the other team before it switches, and a switch costs a
 fixed penalty tuned on the external games. Once a switch is decided, its frame is moved to the
-first touch by the team taking over within 0.22 s, which is the best available estimate of when
+first touch by the team taking over within 0.53 s, which is the best available estimate of when
 control changed. The tuned window is short because the network already places most hand-overs on
 the touch; on the external benchmark the snap changes spellF1 by less than 0.001.
