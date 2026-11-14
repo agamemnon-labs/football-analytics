@@ -14,7 +14,7 @@ from agamemnon import decoder, priors, tcn
 
 FRAMES = 150000
 PERIODS = [(0, 75000), (75000, 150000)]
-EXPECTED = "c500207b88f9b62766e4abec3016f7c31b1a74e85eaae20384312ce19a14a877"
+EXPECTED = "8f914fc79b016943b2c7482940d23796d2381dcedf2acfd139643dd19595f475"
 
 
 def generated_inputs(net):

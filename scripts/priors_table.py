@@ -63,12 +63,11 @@ Nothing here was measured on, fitted to or tuned against the competition match o
 
 This file is generated from `src/agamemnon/priors.py` by `scripts/priors_table.py`, and
 `tests/test_priors.py` fails if the two disagree. The network weights are in
-`src/agamemnon/models/tcn.json`, produced by `{train} --final` (commit 60b5f12). The decoder
-values marked E come from `{train} --folds 5 --name cv_w96` followed by
-`scripts/tune.py --emission network --oof cv_w96` (commit fccc312).
+`src/agamemnon/models/tcn.json`, produced by `{train} --final`. The decoder values marked E come
+from `{train} --folds 5 --name cv_v2` followed by `scripts/tune.py --emission network --oof cv_v2`.
 
-These values were locked before the public ground truth was scored for the first time. Any later
-change is listed under Amendments with its date and a reason that is not a score.
+The values were first locked on 2026-11-06, before the public ground truth was scored for the
+first time. They were changed once after that; the change and its reason are under Amendments.
 
 | name | value | source | rationale | produced by |
 |---|---|---|---|---|
@@ -102,8 +101,26 @@ def render():
 AMENDMENTS = """
 ## Amendments
 
-None yet. After the parameters are locked, any change is listed here with its date and a reason
-that is not a score.
+**2026-11-14. Imitation tags rebuilt, network retrained, decoder retuned.**
+A review of the benchmark found that its imitation tags did not look like the tagging the
+competition supplies. They were short windows cut at the labelled possession edges, while the real
+file holds fixed-length set-piece windows, goal intervals that run through the celebration to the
+kick-off, and overlapping phase windows of 10 to 30 s. This was read from interval lengths and tag
+counts of the Smart Tagging file, which is an input; no ground truth and no video was involved. A
+network trained on the old imitation leans on tag edges that the real tags do not have: scored out
+of fold on the external games with imitation tags of the real structure, it dropped from 0.70 to
+0.58 spellF1 (levels mid and high).
+
+What changed: `bench.synthetic_tags` now writes tags with the real structure; `deadball.tag_features`
+reads a set-piece tag through its first `SETPIECE_WINDOW_S` seconds and a goal tag over its whole
+interval (`POST_GOAL_S` removed); the network was retrained and `NN_TEMPER`, `NN_DEAD_BIAS`,
+`SWITCH_COST`, `END_COST`, `START_COST` and `SNAP_WINDOW_S` were retuned, all on the external
+games with the scripts named above. The earlier values were 1.918, -0.736, 41.05, 37.75, 58.35 and
+0.22.
+
+The first locked version (tag `phase1-submission`) had been scored once on the public five
+minutes before this change. The amended version is scored once as well, after this commit; both
+results are in docs/TECHNICAL_REPORT.md. Neither score was used to choose anything.
 """
 
 
