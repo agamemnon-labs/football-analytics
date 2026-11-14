@@ -7,17 +7,22 @@ Scores come from `evaluation/possession_metrics.py`. Every game is scored by a n
 saw it (5-fold, games grouped). "Balanced" is the mean of the IDSSE and SkillCorner averages, so
 the larger SkillCorner set does not dominate.
 
+The imitation tags were rebuilt on 2026-11-14 to have the structure of the real tagging file
+(docs/PRIORS.md, Amendments). Every number below is from the rebuilt benchmark. It is a harder test
+than the first version, whose tags were cut at the labelled possession edges and so gave away more
+than real tags do; scores from the two versions are not comparable.
+
 ## Emission models
 
-| emission model | evaluation | balanced spellF1 | IDSSE | SkillCorner | balanced macroF1 |
-|---|---|---|---|---|---|
-| logistic (team and dead models) + Viterbi | nested leave-one-game-out | 0.501 | | | |
-| temporal CNN, 64 channels, no regularisation | 5-fold, nested decoder selection | 0.611 | | | |
-| temporal CNN, 96 channels, dropout, team swap (locked) | 5-fold, decoder tuned on all folds | 0.703 | 0.748 | 0.657 | 0.908 |
-| same | 5-fold, nested decoder selection | 0.681 (min 0.585, max 0.774) | | | |
+| emission model | evaluation | balanced spellF1 | mean over games (min, max) | balanced macroF1 |
+|---|---|---|---|---|
+| logistic (team and dead models) + Viterbi | nested leave-one-game-out | 0.624 | 0.607 (0.518, 0.688) | |
+| temporal CNN, 96 channels (submitted) | 5-fold, nested decoder selection | 0.646 | 0.622 (0.508, 0.727) | |
+| same | 5-fold, decoder tuned on all games | 0.646 (IDSSE 0.695, SkillCorner 0.596) | | 0.892 |
 
-The nested figure re-selects the decoder costs without the scored game and is the honest
-estimate; the 0.703 row uses the locked costs and is the baseline for the ablations below.
+The nested rows re-select the decoder costs without the scored game and are the honest estimate.
+The last row uses the locked costs and is the baseline for the ablations below. The network is
+0.02 ahead of the logistic models, a much smaller gap than on the first version of the benchmark.
 
 ## Decoder ablations
 
@@ -25,12 +30,12 @@ Locked network outputs, one component changed at a time, all 108 game-level cell
 
 | variant | IDSSE | SkillCorner | balanced spellF1 | balanced macroF1 |
 |---|---|---|---|---|
-| locked pipeline | 0.748 | 0.657 | 0.703 | 0.908 |
-| no Smart Tagging | 0.682 | 0.551 | 0.617 | 0.884 |
-| no hand-over snapping | 0.748 | 0.657 | 0.703 | 0.908 |
-| no kick-off forcing | 0.748 | 0.657 | 0.702 | 0.908 |
-| half switch penalty | 0.747 | 0.646 | 0.696 | 0.908 |
-| double switch penalty | 0.740 | 0.660 | 0.700 | 0.907 |
+| locked pipeline | 0.695 | 0.596 | 0.646 | 0.892 |
+| no Smart Tagging | 0.669 | 0.553 | 0.611 | 0.882 |
+| no hand-over snapping | 0.696 | 0.596 | 0.646 | 0.892 |
+| no kick-off forcing | 0.695 | 0.596 | 0.646 | 0.892 |
+| half switch penalty | 0.695 | 0.588 | 0.642 | 0.892 |
+| double switch penalty | 0.682 | 0.596 | 0.639 | 0.891 |
 
 ## Network input ablations
 
@@ -40,45 +45,65 @@ the full model.
 
 | inputs removed | IDSSE | SkillCorner | balanced spellF1 | without tags at inference |
 |---|---|---|---|---|
-| none (locked network) | 0.744 | 0.658 | 0.701 | 0.620 |
-| proximity (distances, near-player counts) | 0.735 | 0.652 | 0.694 | 0.607 |
-| touches | 0.740 | 0.659 | 0.699 | 0.616 |
-| team shape and field position | 0.699 | 0.679 | 0.689 | 0.573 |
-| stoppage (player and ball speeds) | 0.734 | 0.660 | 0.697 | 0.605 |
-| Smart Tagging | 0.668 | 0.558 | 0.613 | 0.613 |
+| none (locked network) | 0.692 | 0.591 | 0.641 | 0.612 |
+| proximity (distances, near-player counts) | 0.687 | 0.592 | 0.640 | 0.603 |
+| touches | 0.694 | 0.591 | 0.643 | 0.618 |
+| team shape and field position | 0.637 | 0.593 | 0.615 | 0.573 |
+| stoppage (player and ball speeds) | 0.683 | 0.592 | 0.637 | 0.602 |
+| Smart Tagging | 0.662 | 0.561 | 0.612 | 0.612 |
 
-Smart Tagging is the largest single contribution. The other groups overlap: removing any one of
-them costs at most 0.012, and team shape is the only group whose removal changes the two datasets
-in opposite directions. Without tags the locked network still scores 0.620, against 0.613 for a
-network that never saw tags, so it does not depend on them being present.
+Smart Tagging and team shape are the two groups that matter, at 0.029 and 0.026. Team shape only
+matters on IDSSE. Proximity, touches and stoppage features each move the score by 0.004 or less:
+they overlap, and the touch features in particular add nothing the network cannot get from the
+others. Without tags the locked network scores 0.612, the same as a network that never saw tags,
+so it does not depend on them being present.
+
+## Tag styles
+
+The tag inputs of every game replaced by tags from a second, independent generator
+(`scripts/tag_styles.py`), levels mid and high, out-of-fold networks.
+
+| tag inputs | IDSSE | SkillCorner | balanced spellF1 |
+|---|---|---|---|
+| tags as trained | 0.694 | 0.602 | 0.648 |
+| no tags | 0.669 | 0.559 | 0.614 |
+| fixed windows, second generator | 0.688 | 0.599 | 0.644 |
+| possession-aligned windows, second generator | 0.706 | 0.608 | 0.657 |
+
+The submitted network holds its score in both styles. The first network, trained on
+possession-aligned tags and scored the same way before the rebuild, went from 0.70 to 0.58 when
+given fixed windows, which is why the benchmark was rebuilt.
 
 ## Stability of the locked decoder
 
 Each tuned constant scaled by 0.5 and 1.5, one at a time, on the out-of-fold outputs of all 108
-cells (`python scripts/sweep.py --oof cv_w96`). "Worst cell" is the lowest single game and
+cells (`python scripts/sweep.py --oof cv_v2`). "Worst cell" is the lowest single game and
 degradation level. This documents the shape of the optimum; no locked value was changed.
 
 | variant | balanced spellF1 | worst cell spellF1 | balanced macroF1 |
 |---|---|---|---|
-| locked | 0.703 | 0.557 | 0.908 |
-| NN_TEMPER x0.5 | 0.699 | 0.551 | 0.907 |
-| NN_TEMPER x1.5 | 0.700 | 0.557 | 0.908 |
-| NN_DEAD_BIAS x0.5 | 0.702 | 0.556 | 0.908 |
-| NN_DEAD_BIAS x1.5 | 0.702 | 0.558 | 0.908 |
-| SWITCH_COST x0.5 | 0.696 | 0.551 | 0.908 |
-| SWITCH_COST x1.5 | 0.703 | 0.562 | 0.908 |
-| END_COST x0.5 | 0.702 | 0.560 | 0.908 |
-| END_COST x1.5 | 0.702 | 0.557 | 0.908 |
-| START_COST x0.5 | 0.702 | 0.561 | 0.908 |
-| START_COST x1.5 | 0.703 | 0.557 | 0.908 |
-| SNAP_WINDOW_S x0.5 | 0.703 | 0.557 | 0.908 |
-| SNAP_WINDOW_S x1.5 | 0.702 | 0.559 | 0.908 |
+| locked | 0.646 | 0.498 | 0.892 |
+| NN_TEMPER x0.5 | 0.633 | 0.478 | 0.889 |
+| NN_TEMPER x1.5 | 0.644 | 0.489 | 0.893 |
+| NN_DEAD_BIAS x0.5 | 0.646 | 0.496 | 0.893 |
+| NN_DEAD_BIAS x1.5 | 0.644 | 0.498 | 0.892 |
+| SWITCH_COST x0.5 | 0.642 | 0.492 | 0.892 |
+| SWITCH_COST x1.5 | 0.641 | 0.489 | 0.892 |
+| END_COST x0.5 | 0.644 | 0.497 | 0.892 |
+| END_COST x1.5 | 0.645 | 0.495 | 0.892 |
+| START_COST x0.5 | 0.645 | 0.497 | 0.892 |
+| START_COST x1.5 | 0.645 | 0.495 | 0.892 |
+| SNAP_WINDOW_S x0.5 | 0.646 | 0.497 | 0.892 |
+| SNAP_WINDOW_S x1.5 | 0.645 | 0.496 | 0.892 |
 
 Reproduce:
 
     python scripts/fetch_external.py && python scripts/build_cells.py
-    python scripts/train_tcn.py --folds 5 --name cv_w96
-    python scripts/tune.py --emission network --oof cv_w96
-    python scripts/ablation.py --oof cv_w96
+    python scripts/train_tcn.py --folds 5 --name cv_v2
+    python scripts/tune.py --emission network --oof cv_v2
+    python scripts/tune.py --emission logistic
+    python scripts/ablation.py --oof cv_v2
+    python scripts/sweep.py --oof cv_v2
+    python scripts/tag_styles.py --oof cv_v2
     python scripts/train_tcn.py --only-fold 0 --drop GROUP --name abl_GROUP
     python scripts/ablation.py --oof abl_GROUP --within abl_GROUP --variants "locked pipeline" "no Smart Tagging"

@@ -38,9 +38,9 @@ SEARCH = {
     # name: (low, high, log-scale)
     "TEAM_TEMPER": (0.02, 0.6, True),
     "DEAD_TEMPER": (0.02, 0.6, True),
-    "SWITCH_COST": (2.0, 40.0, True),
-    "END_COST": (2.0, 40.0, True),
-    "START_COST": (2.0, 40.0, True),
+    "SWITCH_COST": (2.0, 200.0, True),
+    "END_COST": (2.0, 200.0, True),
+    "START_COST": (2.0, 200.0, True),
     "DEAD_PRIOR": (0.2, 0.6, False),
     "SNAP_WINDOW_S": (0.0, 2.0, False),
 }

@@ -4,7 +4,7 @@ Decoder-level ablations reuse the out-of-fold network predictions, so every numb
 network never saw. Network input ablations retrain fold 0 without a feature group
 (`scripts/train_tcn.py --only-fold 0 --drop GROUP`) and are compared on that fold only.
 
-    python scripts/ablation.py --oof cv_w96
+    python scripts/ablation.py --oof cv_v2
     python scripts/ablation.py --oof abl_touches --within abl_touches --variants "locked pipeline"
 """
 
@@ -54,7 +54,7 @@ def _worker(args):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--oof", default="cv_w96")
+    parser.add_argument("--oof", default="cv_v2")
     parser.add_argument("--workers", type=int, default=8)
     parser.add_argument("--within", help="score only the games with outputs in this folder, "
                         "e.g. a single-fold run")

@@ -3,7 +3,7 @@
 Run on the external benchmark with the out-of-fold network outputs. It documents how sharp the
 optimum is; it does not change any locked value.
 
-    python scripts/sweep.py --oof cv_w96
+    python scripts/sweep.py --oof cv_v2
 """
 
 import argparse
@@ -25,7 +25,7 @@ PARAMS = ("NN_TEMPER", "NN_DEAD_BIAS", "SWITCH_COST", "END_COST", "START_COST", 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--oof", default="cv_w96")
+    parser.add_argument("--oof", default="cv_v2")
     parser.add_argument("--workers", type=int, default=8)
     args = parser.parse_args()
     os.environ["AGAMEMNON_OOF"] = args.oof
