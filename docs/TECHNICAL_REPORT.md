@@ -2,7 +2,7 @@
 title: "Agamemnon: Frame-Level Ball Possession from Automatic Tracking"
 subtitle: "Technical Document · More than a Hack 2027, Phase 1"
 author: "Naufal Fahrozi, Raymond Thymotimmanuel, Tua Delima Sitompul"
-affiliation: "Team Agamemnon, Universitas Mulawarman"
+affiliation: "Team Agamemnon"
 date: "November 2026"
 ---
 
