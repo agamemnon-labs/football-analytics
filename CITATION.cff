@@ -11,7 +11,7 @@ authors:
     family-names: Sitompul
 repository-code: "https://github.com/agamemnon-labs/football-analytics"
 license: MIT
-date-released: "2026-11-04"
+date-released: "2026-11-14"
 references:
   - type: software
     title: "More than a Hack 2027: Phase 1 - Ball Possession (starter kit and scorer)"
