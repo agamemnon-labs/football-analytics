@@ -7,13 +7,20 @@ on:
 
 jobs:
   pytest:
-    runs-on: ubuntu-latest
+    # Three systems on purpose: tests/test_determinism.py checks that the committed network and
+    # the decoder give the same labels under different BLAS builds and maths libraries.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: pip
-      - run: pip install -r requirements.txt && pip install -e . --no-deps
+      - run: pip install -r requirements.txt
+      - run: pip install -e . --no-deps
       # The match data is not public, so the end-to-end test skips itself here.
       - run: python -m pytest -q
