@@ -42,7 +42,7 @@ def dm(values):
 
 
 def main():
-    os.environ.setdefault("AGAMEMNON_OOF", "cv_w96")
+    os.environ.setdefault("AGAMEMNON_OOF", "cv_v2")
     match = bench.load_game(*GAME)
     tagged = replace(match, tags=bench.synthetic_tags(match, match.name))
     fps = match.fps

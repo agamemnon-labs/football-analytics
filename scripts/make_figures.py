@@ -1,7 +1,7 @@
 """Figures for the README and the technical document, drawn from one external match.
 
 Everything here comes from the benchmark (IDSSE match J03WMX, tracking degraded at the "mid"
-level, out-of-fold network outputs from cv_w96), never from the competition match.
+level, out-of-fold network outputs from cv_v2), never from the competition match.
 
     python scripts/make_figures.py            # writes docs/assets/*.png and demo.gif
 """
@@ -41,7 +41,7 @@ NAMES = {H: "Home", A: "Away", D: "Dead ball"}
 
 
 def load_example():
-    os.environ.setdefault("AGAMEMNON_OOF", "cv_w96")
+    os.environ.setdefault("AGAMEMNON_OOF", "cv_v2")
     cell = bench.Cell(GAME[0], GAME[1], LEVEL)
     pred = cell.decode(priors, True, cell.oof_logp(True))
     match = bench.load_game(*GAME)
@@ -117,10 +117,9 @@ def timeline(match, seen, gt, pred, theme):
 
 
 # Numbers from docs/BENCHMARK.md (nested estimates on the left, locked decoder on the right).
-BENCH = [("logistic emissions", 0.501), ("CNN, 64 channels", 0.611),
-         ("CNN, 96 channels (submitted)", 0.681)]
-ABLATION = [("no Smart Tagging", 0.086), ("switch penalty halved", 0.007),
-            ("switch penalty doubled", 0.003), ("no hand-over snapping", 0.000)]
+BENCH = [("logistic emissions", 0.624), ("temporal CNN (submitted)", 0.646)]
+ABLATION = [("no Smart Tagging", 0.035), ("switch penalty doubled", 0.007),
+            ("switch penalty halved", 0.004), ("no hand-over snapping", 0.000)]
 
 
 def benchmark(theme):
@@ -131,7 +130,7 @@ def benchmark(theme):
     fig.patch.set_facecolor(th["surface"])
     for ax, rows, title, fmt, xmax in (
             (left, BENCH, "spellF1, nested cross-validation", "{:.3f}", 0.8),
-            (right, ABLATION, "spellF1 lost by one change", "{:.3f}", 0.1)):
+            (right, ABLATION, "spellF1 lost by one change", "{:.3f}", 0.05)):
         style_axes(ax, th)
         y = np.arange(len(rows))[::-1]
         values = [v for _, v in rows]
