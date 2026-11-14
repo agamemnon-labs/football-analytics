@@ -57,7 +57,8 @@ ROWS = {
 
 HEADER = """# Priors
 
-Every constant the pipeline uses. Sources: **A** physics or geometry, **C** a rule, definition or
+Every constant in `src/agamemnon/priors.py`, which is where the pipeline's thresholds and tuned
+values live. Sources: **A** physics or geometry, **C** a rule, definition or
 general football knowledge, **E** fitted or tuned on the external games only (docs/EXTERNAL_DATA.md).
 Nothing here was measured on, fitted to or tuned against the competition match or its ground truth.
 
@@ -65,6 +66,11 @@ This file is generated from `src/agamemnon/priors.py` by `scripts/priors_table.p
 `tests/test_priors.py` fails if the two disagree. The network weights are in
 `src/agamemnon/models/tcn.json`, produced by `{train} --final`. The decoder values marked E come
 from `{train} --folds 5 --name cv_v2` followed by `scripts/tune.py --emission network --oof cv_v2`.
+
+A few constants are kept next to the code they belong to instead: fixed scalings that bring a
+feature into a unit range (features.py, deadball.py, decoder.py), the training hyperparameters
+(scripts/train_tcn.py), the degradation ranges (external/degrade.py) and the 2 s control rule for
+external labels (external/mapping.py). None of them was set on the competition match either.
 
 The values were first locked on 2026-11-06, before the public ground truth was scored for the
 first time. They were changed once after that; the change and its reason are under Amendments.
