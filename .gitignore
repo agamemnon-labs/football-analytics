@@ -69,7 +69,7 @@ env/
 .pytest_cache/
 *.egg-info/
 
-# Built from docs/TECHNICAL_REPORT.md by scripts/build_report.py and build_docx.py
+# Built from docs/TECHNICAL_REPORT.md by scripts/build_report.py
 /Agamemnon.docx
 
 # Renders for sharing, not part of the repository

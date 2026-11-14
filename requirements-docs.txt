@@ -1,6 +1,5 @@
-# Report rendering (build_report.py, build_docx.py) and figures (make_figures.py,
+# Report rendering (build_report.py) and figures (make_figures.py,
 # make_broadcast.py, make_social.py). Not needed to produce the submission.
-markdown==3.7
 python-docx==1.1.2
 matplotlib==3.11.2
 pillow==13.0.0

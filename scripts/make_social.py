@@ -16,9 +16,14 @@ import shutil
 import subprocess
 import tempfile
 
-from build_report import find_browser
-
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BROWSERS = [
+    r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+    r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
+    r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    "google-chrome", "chromium", "chromium-browser", "microsoft-edge",
+]
 ASSETS = os.path.join(ROOT, "docs", "assets")
 DEMO = os.path.join(ROOT, "site", "demo.json")
 LEVEL = "mid"
@@ -66,6 +71,14 @@ h1 {{ position: absolute; left: 72px; top: 132px; margin: 0; font-family: Archiv
 <div class="cap"><span>truth vs our calls, 10 minutes of a match the model never saw</span><span class="url">agamemnon-labs.github.io/football-analytics</span></div>
 </body></html>
 """
+
+
+def find_browser(explicit):
+    for candidate in ([explicit] if explicit else []) + BROWSERS:
+        path = candidate if os.path.isfile(candidate) else shutil.which(candidate)
+        if path:
+            return path
+    raise SystemExit("no Chromium-based browser found; pass --browser PATH")
 
 
 def expand(rle):
