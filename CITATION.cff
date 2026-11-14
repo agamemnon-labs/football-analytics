@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
-title: "Agamemnon: frame-level ball possession from automatic tracking"
+title: "Who has the ball? Frame-level ball possession from automatic tracking"
 type: software
 authors:
   - given-names: Naufal

@@ -231,7 +231,7 @@ def add_list(doc, lines):
 
 
 def add_figure(doc, src):
-    width = Cm(9.5) if "demo" in src else TEXT_WIDTH
+    width = Cm(8.6) if "demo" in src else TEXT_WIDTH
     doc.add_picture(os.path.join(DOCS, src), width=width)
     paragraph = doc.paragraphs[-1]
     paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -298,7 +298,7 @@ def setup(doc, meta):
     normal.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
     normal.paragraph_format.widow_control = True
 
-    for name, size, before, after in (("Heading 1", 14, 16, 6), ("Heading 2", 11.5, 10, 4)):
+    for name, size, before, after in (("Heading 1", 14, 14, 6), ("Heading 2", 11.5, 9, 4)):
         style = styles[name]
         fonts(style, HEAD)
         style.font.size = Pt(size)
